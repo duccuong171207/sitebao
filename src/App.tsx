@@ -86,6 +86,18 @@ export default function App() {
         category: selectedCategory === 'All' ? undefined : selectedCategory
       });
       setArticles(data);
+
+      if (selectedArticle) {
+        const updatedCurrent = data.find((a) => a.id === selectedArticle.id);
+        if (updatedCurrent) {
+          try {
+            const freshArticle = await api.getArticle(updatedCurrent.id, false);
+            setSelectedArticle(freshArticle);
+          } catch {
+            setSelectedArticle(updatedCurrent);
+          }
+        }
+      }
     } catch (err) {
       console.error('Failed to load articles:', err);
     } finally {
