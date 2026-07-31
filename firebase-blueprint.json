@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "articles": {
+      "title": "Articles",
+      "description": "News and editorial published stories",
+      "fields": {
+        "id": { "type": "string", "description": "Unique article ID" },
+        "slug": { "type": "string", "description": "Unique article URL slug" },
+        "title": { "type": "string", "description": "Article headline title" },
+        "subtitle": { "type": "string", "description": "Article subtitle" },
+        "summary": { "type": "string", "description": "Short article abstract" },
+        "content": { "type": "string", "description": "Full HTML or markdown article body" },
+        "author": { "type": "string", "description": "Official author identity (default: Luiis David ✓)" },
+        "category": { "type": "string", "description": "Editorial category" },
+        "status": { "type": "string", "description": "Publication status (draft, published, archived)" },
+        "views": { "type": "number", "description": "Total view count" },
+        "likes": { "type": "number", "description": "Total reader like count" },
+        "commentCount": { "type": "number", "description": "Total comment count" }
+      }
+    },
+    "mediaLibrary": {
+      "title": "Media Library",
+      "description": "Watermarked photography and article images",
+      "fields": {
+        "id": { "type": "string", "description": "Unique image ID" },
+        "url": { "type": "string", "description": "Public watermarked image URL" },
+        "credit": { "type": "string", "description": "Photo credit" },
+        "copyright": { "type": "string", "description": "Copyright notice (© Luiis David)" },
+        "watermarkText": { "type": "string", "description": "Embedded watermark text" }
+      }
+    },
+    "watermarkSettings": {
+      "title": "Watermark Configurations",
+      "description": "Global image watermark settings",
+      "fields": {
+        "text": { "type": "string", "description": "Watermark text (© Luiis David)" },
+        "position": { "type": "string", "description": "Corner placement position" },
+        "opacity": { "type": "number", "description": "Opacity ratio" }
+      }
+    }
+  }
+}

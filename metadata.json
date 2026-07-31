@@ -1,0 +1,8 @@
+{
+  "name": "Remix Luiis David — Premium News \u0026 Editorial1",
+  "description": "Independent international news and financial editorial publication owned and published by Luiis David.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
