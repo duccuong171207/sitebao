@@ -69,10 +69,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         style={{ minHeight }}
         contentEditable
         spellCheck={false}
+        lang="vi"
         data-placeholder={placeholder}
         onInput={handleInput}
         onBlur={handleInput}
         onCompositionStart={handleCompositionStart}
+        onCompositionUpdate={() => { isComposingRef.current = true; }}
         onCompositionEnd={handleCompositionEnd}
       />
     </div>
