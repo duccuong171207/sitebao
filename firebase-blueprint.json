@@ -3,16 +3,17 @@
     "articles": {
       "title": "Articles",
       "description": "News and editorial published stories",
-      "fields": {
+      "type": "object",
+      "properties": {
         "id": { "type": "string", "description": "Unique article ID" },
         "slug": { "type": "string", "description": "Unique article URL slug" },
         "title": { "type": "string", "description": "Article headline title" },
         "subtitle": { "type": "string", "description": "Article subtitle" },
         "summary": { "type": "string", "description": "Short article abstract" },
         "content": { "type": "string", "description": "Full HTML or markdown article body" },
-        "author": { "type": "string", "description": "Official author identity (default: Luiis David ✓)" },
+        "author": { "type": "string", "description": "Official author identity" },
         "category": { "type": "string", "description": "Editorial category" },
-        "status": { "type": "string", "description": "Publication status (draft, published, archived)" },
+        "status": { "type": "string", "description": "Publication status" },
         "views": { "type": "number", "description": "Total view count" },
         "likes": { "type": "number", "description": "Total reader like count" },
         "commentCount": { "type": "number", "description": "Total comment count" }
@@ -21,22 +22,50 @@
     "mediaLibrary": {
       "title": "Media Library",
       "description": "Watermarked photography and article images",
-      "fields": {
+      "type": "object",
+      "properties": {
         "id": { "type": "string", "description": "Unique image ID" },
         "url": { "type": "string", "description": "Public watermarked image URL" },
         "credit": { "type": "string", "description": "Photo credit" },
-        "copyright": { "type": "string", "description": "Copyright notice (© Luiis David)" },
+        "copyright": { "type": "string", "description": "Copyright notice" },
         "watermarkText": { "type": "string", "description": "Embedded watermark text" }
       }
     },
     "watermarkSettings": {
       "title": "Watermark Configurations",
       "description": "Global image watermark settings",
-      "fields": {
-        "text": { "type": "string", "description": "Watermark text (© Luiis David)" },
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "Watermark text" },
         "position": { "type": "string", "description": "Corner placement position" },
         "opacity": { "type": "number", "description": "Opacity ratio" }
       }
+    },
+    "system": {
+      "title": "System Publication Data",
+      "description": "Global publication settings and metadata",
+      "type": "object",
+      "properties": {
+        "updatedAt": { "type": "string", "description": "Last updated timestamp" }
+      }
+    }
+  },
+  "firestore": {
+    "/articles/{articleId}": {
+      "schema": { "$ref": "#/entities/articles" },
+      "description": "Collection of published news articles"
+    },
+    "/mediaLibrary/{imageId}": {
+      "schema": { "$ref": "#/entities/mediaLibrary" },
+      "description": "Collection of media images"
+    },
+    "/watermarkSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/watermarkSettings" },
+      "description": "Watermark settings"
+    },
+    "/system/{docId}": {
+      "schema": { "$ref": "#/entities/system" },
+      "description": "System documents"
     }
   }
 }

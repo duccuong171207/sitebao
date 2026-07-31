@@ -1,34 +1,32 @@
-import { initializeApp, getApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore, Firestore } from 'firebase/firestore';
 import fs from 'fs';
 import path from 'path';
 
-let firestoreDb: ReturnType<typeof getFirestore> | null = null;
+let firestoreDb: Firestore | null = null;
 
-export function getFirestoreDb() {
+export function getFirestoreDb(): Firestore | null {
   if (firestoreDb) return firestoreDb;
 
   try {
     const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-    let projectId = 'fifth-fusion-1zp2g';
-    let databaseId = undefined;
-
-    if (fs.existsSync(configPath)) {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      if (config.projectId) projectId = config.projectId;
-      if (config.firestoreDatabaseId) databaseId = config.firestoreDatabaseId;
+    if (!fs.existsSync(configPath)) {
+      console.warn('firebase-applet-config.json missing, using local DB storage sync');
+      return null;
     }
 
-    if (getApps().length === 0) {
-      initializeApp({ projectId });
-    }
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const app = getApps().length === 0 ? initializeApp(config) : getApp();
 
-    // Initialize Firestore with specific database ID if available
-    firestoreDb = databaseId ? getFirestore(databaseId) : getFirestore();
-    console.log('Firebase Firestore initialized successfully with databaseId:', databaseId || 'default');
+    firestoreDb = config.firestoreDatabaseId 
+      ? getFirestore(app, config.firestoreDatabaseId) 
+      : getFirestore(app);
+
+    console.log('Firebase Firestore Web SDK initialized successfully with databaseId:', config.firestoreDatabaseId || 'default');
     return firestoreDb;
   } catch (err) {
     console.warn('Firebase Firestore init warning, using local DB storage sync:', err);
     return null;
   }
 }
+

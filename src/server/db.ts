@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { collection, doc, getDocs, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import { 
   Article, Comment, ArticleImage, AdminAuthResponse, 
   WatermarkSettings, SlugRedirect 
@@ -144,10 +145,11 @@ class NewsDatabase {
       const firestore = getFirestoreDb();
       if (!firestore) return;
 
-      const articlesSnap = await firestore.collection('articles').get();
+      const articlesCol = collection(firestore, 'articles');
+      const articlesSnap = await getDocs(articlesCol);
       const firestoreArticles: Article[] = [];
-      articlesSnap.forEach(doc => {
-        const art = doc.data() as Article;
+      articlesSnap.forEach(docSnap => {
+        const art = docSnap.data() as Article;
         if (!art.status) art.status = 'published';
         firestoreArticles.push(art);
       });
@@ -158,9 +160,9 @@ class NewsDatabase {
 
       if (articlesSnap.empty) {
         // Seed initial articles into Firestore if empty
-        const batch = firestore.batch();
+        const batch = writeBatch(firestore);
         INITIAL_ARTICLES.forEach((art) => {
-          const docRef = firestore.collection('articles').doc(art.id);
+          const docRef = doc(firestore, 'articles', art.id);
           batch.set(docRef, art, { merge: true });
         });
         await batch.commit();
@@ -168,8 +170,9 @@ class NewsDatabase {
 
       this.data.articles = Array.from(mergedMap.values());
 
-      const sysDoc = await firestore.collection('system').doc('publication_data').get();
-      if (sysDoc.exists) {
+      const sysDocRef = doc(firestore, 'system', 'publication_data');
+      const sysDoc = await getDoc(sysDocRef);
+      if (sysDoc.exists()) {
         const sysData = sysDoc.data();
         if (sysData?.watermarkSettings) this.data.watermarkSettings = sysData.watermarkSettings;
         if (sysData?.mediaLibrary) this.data.mediaLibrary = sysData.mediaLibrary;
@@ -191,23 +194,24 @@ class NewsDatabase {
     try {
       const firestore = getFirestoreDb();
       if (firestore) {
-        firestore.collection('system').doc('publication_data').set({
+        const sysDocRef = doc(firestore, 'system', 'publication_data');
+        setDoc(sysDocRef, {
           watermarkSettings: this.data.watermarkSettings,
           mediaLibrary: this.data.mediaLibrary,
           redirects: this.data.redirects,
           updatedAt: new Date().toISOString()
-        }, { merge: true }).catch(e => console.error('Firestore sync error:', e));
+        }, { merge: true }).catch(e => console.warn('Firestore sync warning:', e?.message || e));
 
         // Sync individual articles to Firestore collection
-        const batch = firestore.batch();
+        const batch = writeBatch(firestore);
         this.data.articles.forEach((art) => {
-          const docRef = firestore.collection('articles').doc(art.id);
+          const docRef = doc(firestore, 'articles', art.id);
           batch.set(docRef, art, { merge: true });
         });
-        batch.commit().catch(e => console.error('Firestore batch commit error:', e));
+        batch.commit().catch(e => console.warn('Firestore batch commit warning:', e?.message || e));
       }
     } catch (err) {
-      console.error('Error initiating Firestore sync:', err);
+      console.warn('Error initiating Firestore sync:', err);
     }
   }
 
