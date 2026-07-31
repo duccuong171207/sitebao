@@ -1,4 +1,4 @@
-import { Comment } from '../types.js';
+import { Comment } from '../types';
 
 const POSITIVE_COMMENT_TEMPLATES = [
   "Excellent article. Very informative analysis.",
@@ -62,20 +62,78 @@ const LAST_NAMES = [
   "Kaufman", "Abernathy", "Davenport", "Harrington", "Kensington", "Montgomery", "Prescott", "Winslow"
 ];
 
-const TIME_OFFSETS = [
-  "10 minutes ago", "25 minutes ago", "42 minutes ago", "1 hour ago", "2 hours ago",
-  "3 hours ago", "4 hours ago", "5 hours ago", "6 hours ago", "8 hours ago",
-  "10 hours ago", "12 hours ago", "14 hours ago", "18 hours ago", "1 day ago"
-];
+export function formatCommentTimestamp(timestampMs: number, nowMs: number = Date.now()): string {
+  const commentDate = new Date(timestampMs);
+  const diffMs = Math.max(0, nowMs - timestampMs);
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 1) {
+    return 'Just now';
+  }
+  if (diffMins < 60) {
+    return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+  }
+  if (diffHours < 24) {
+    return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+  }
+  if (diffDays < 7) {
+    return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+  }
+
+  const monthName = commentDate.toLocaleDateString('en-US', { month: 'short' });
+  const day = commentDate.getDate();
+  const year = commentDate.getFullYear();
+  let hours = commentDate.getHours();
+  const minutes = commentDate.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const minsStr = minutes < 10 ? `0${minutes}` : `${minutes}`;
+
+  return `${monthName} ${day}, ${year} — ${hours}:${minsStr} ${ampm}`;
+}
 
 /**
- * Generates 100 to 150 positive seed comments for a specified news article.
+ * Generates 100 to 180 positive seed comments for an article,
+ * distributing their creation timestamps smoothly from the publish date up to current time.
  */
-export function generateSeedCommentsForArticle(articleId: string, count: number = 125): Comment[] {
+export function generateSeedCommentsForArticle(
+  articleId: string, 
+  count: number = 125,
+  publishedAtDate?: string,
+  publishedAtTime?: string
+): Comment[] {
   const comments: Comment[] = [];
   const total = Math.max(100, Math.min(count, 180));
 
+  let publishMs: number;
+  if (publishedAtDate) {
+    const timeStr = (publishedAtTime && publishedAtTime.trim()) ? publishedAtTime.trim() : '10:00';
+    const d = new Date(`${publishedAtDate}T${timeStr}:00`);
+    if (!isNaN(d.getTime())) {
+      publishMs = d.getTime();
+    } else {
+      const d2 = new Date(publishedAtDate);
+      publishMs = !isNaN(d2.getTime()) ? d2.getTime() : Date.now() - 2 * 24 * 60 * 60 * 1000;
+    }
+  } else {
+    publishMs = Date.now() - 2 * 24 * 60 * 60 * 1000;
+  }
+
+  const nowMs = Date.now();
+  if (publishMs >= nowMs) {
+    publishMs = nowMs - 2 * 60 * 60 * 1000; // If publish date is future/now, start 2 hours ago
+  }
+
+  const totalRangeMs = Math.max(60000, nowMs - publishMs);
+
   for (let i = 0; i < total; i++) {
+    // Generate segment timestamp from publish date (i=0) up to present time (i=total-1)
+    const segmentStart = publishMs + (i / total) * totalRangeMs;
+    const segmentEnd = publishMs + ((i + 1) / total) * totalRangeMs;
+    const commentMs = segmentStart + Math.random() * (segmentEnd - segmentStart);
+
     const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
     const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
     const authorName = `${firstName} ${lastName}`;
@@ -89,8 +147,8 @@ export function generateSeedCommentsForArticle(articleId: string, count: number 
       content = `${template1} ${template2}`;
     }
 
-    const offsetTime = TIME_OFFSETS[i % TIME_OFFSETS.length];
     const likesCount = Math.floor(Math.random() * 320) + 12;
+    const timeFormatted = formatCommentTimestamp(commentMs, nowMs);
 
     comments.push({
       id: `c-seed-${articleId}-${i + 1}-${Math.random().toString(36).substring(2, 6)}`,
@@ -98,12 +156,16 @@ export function generateSeedCommentsForArticle(articleId: string, count: number 
       authorName,
       content,
       commentType: 'seed',
-      createdAt: offsetTime,
+      createdAt: timeFormatted,
       likes: likesCount,
       isSeed: true,
       isHidden: false
     });
   }
 
+  // Reverse so the newest comments appear first in discussion
+  comments.reverse();
+
   return comments;
 }
+

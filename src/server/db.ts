@@ -149,7 +149,7 @@ class NewsDatabase {
       let commentsUpdated = false;
       this.data.articles.forEach((a) => {
         if (!a.comments || a.comments.length < 50) {
-          a.comments = generateSeedCommentsForArticle(a.id, 128);
+          a.comments = generateSeedCommentsForArticle(a.id, 128, a.publishedAtDate, a.publishedAtTime);
           a.commentCount = a.comments.length;
           commentsUpdated = true;
         }
@@ -567,7 +567,7 @@ class NewsDatabase {
     // Automatically assign 100+ positive seed comments upon publication
     const seedComments = (articleData.comments && articleData.comments.length >= 50)
       ? articleData.comments
-      : generateSeedCommentsForArticle(newId, 128);
+      : generateSeedCommentsForArticle(newId, 128, publishedAtDate, publishedAtTime);
 
     newArticle.comments = seedComments;
     newArticle.commentCount = seedComments.length;
@@ -586,7 +586,7 @@ class NewsDatabase {
     const article = this.data.articles.find(a => a.id === articleId);
     if (!article) return null;
 
-    const newComments = generateSeedCommentsForArticle(articleId, count);
+    const newComments = generateSeedCommentsForArticle(articleId, count, article.publishedAtDate, article.publishedAtTime);
     article.comments = newComments;
     article.commentCount = newComments.length;
     this.save();

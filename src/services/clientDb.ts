@@ -374,6 +374,10 @@ export const clientDb = {
     const timezone = articleData.timezone || 'EST';
     const displayDateTime = articleData.displayDateTime || formatArticleDisplayDate(publishedAtDate, publishedAtTime, timezone);
 
+    const seedComments = (articleData.comments && articleData.comments.length >= 50)
+      ? articleData.comments
+      : generateSeedCommentsForArticle(newId, 128, publishedAtDate, publishedAtTime);
+
     const newArticle: Article = {
       id: newId,
       slug,
@@ -394,11 +398,11 @@ export const clientDb = {
       placement: (articleData.placement as ArticlePlacement) || 'normal',
       views: articleData.views || 0,
       likes: articleData.likes || 0,
-      commentCount: 0,
+      commentCount: seedComments.length,
       shares: articleData.shares || 0,
       seoTitle: articleData.seoTitle || articleData.title || '',
       metaDescription: articleData.metaDescription || articleData.summary || '',
-      comments: [],
+      comments: seedComments,
       images: articleData.images || [],
       videos: articleData.videos || []
     };
@@ -554,7 +558,7 @@ export const clientDb = {
     const article = memoryArticles.find(a => a.id === articleId);
     if (!article) throw new Error('Article not found');
 
-    const generated = generateSeedCommentsForArticle(articleId, count);
+    const generated = generateSeedCommentsForArticle(articleId, count, article.publishedAtDate, article.publishedAtTime);
     article.comments = generated;
     article.commentCount = generated.length;
     saveLocalArticles(memoryArticles);
