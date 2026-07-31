@@ -403,9 +403,9 @@ export const ArticleDetail: React.FC<ArticleDetailProps> = ({
                 <img
                   src={featuredMedia.url}
                   alt={featuredMedia.altText || article.title}
-                  className="w-full max-h-[550px] object-cover rounded-xs group-hover:scale-101 transition-transform duration-300"
+                  className="w-full h-auto object-contain rounded-xs group-hover:scale-[1.005] transition-transform duration-300"
                 />
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/15 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <span className="bg-black/80 text-white text-xs font-bold px-3 py-1.5 rounded-xs flex items-center gap-2 border border-white/20">
                     <Camera size={15} /> View Fullscreen Gallery
                   </span>
@@ -498,8 +498,8 @@ export const ArticleDetail: React.FC<ArticleDetailProps> = ({
                         setLightboxOpen(true);
                       }}
                     >
-                      <div className="relative overflow-hidden rounded-xs aspect-16/9">
-                        <img src={item.url} alt={item.caption} className="w-full h-full object-cover" />
+                      <div className="relative overflow-hidden rounded-xs bg-black/5">
+                        <img src={item.url} alt={item.caption} className="w-full h-auto object-contain rounded-xs" />
                         <span className="absolute bottom-2 left-2 bg-black/80 text-white text-[9px] font-medium px-2 py-0.5 rounded-xs">
                           {item.copyright || '© Luiis David'}
                         </span>

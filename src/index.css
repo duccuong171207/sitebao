@@ -143,6 +143,16 @@
   margin-bottom: 0.5rem;
 }
 
+.article-body-content img, .article-html-content img {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  display: block;
+  margin: 1.5rem auto;
+  border-radius: 2px;
+  object-fit: contain;
+}
+
 /* Print Rules */
 @media print {
   header, footer, .no-print {
