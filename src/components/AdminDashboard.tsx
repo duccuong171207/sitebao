@@ -94,6 +94,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [backupMsg, setBackupMsg] = useState({ text: '', isError: false });
   const [copiedMediaId, setCopiedMediaId] = useState<string | null>(null);
 
+  // Quick Edit Views & Likes State
+  const [quickStatsArticle, setQuickStatsArticle] = useState<Article | null>(null);
+  const [quickViewsInput, setQuickViewsInput] = useState<number>(0);
+  const [quickLikesInput, setQuickLikesInput] = useState<number>(0);
+  const [isSavingQuickStats, setIsSavingQuickStats] = useState(false);
+
+  const handleOpenQuickStats = (art: Article) => {
+    setQuickStatsArticle(art);
+    setQuickViewsInput(art.views || 0);
+    setQuickLikesInput(art.likes || 0);
+  };
+
+  const handleSaveQuickStats = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickStatsArticle) return;
+    setIsSavingQuickStats(true);
+    try {
+      await api.updateArticle(quickStatsArticle.id, {
+        views: quickViewsInput,
+        likes: quickLikesInput
+      });
+      setQuickStatsArticle(null);
+      loadAdminArticles();
+      onArticleUpdated();
+    } catch (err: any) {
+      alert('Failed to update stats: ' + (err?.message || 'Error'));
+    } finally {
+      setIsSavingQuickStats(false);
+    }
+  };
+
   // Verify auth token on mount
   useEffect(() => {
     if (isOpen) {
@@ -903,10 +934,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 </span>
                               </td>
                               <td className="py-3 px-2 font-mono text-slate-600">
-                                {art.views?.toLocaleString()}
+                                <button
+                                  onClick={() => handleOpenQuickStats(art)}
+                                  className="hover:bg-slate-200/70 px-1.5 py-0.5 rounded flex items-center gap-1 group text-left transition"
+                                  title="Chỉnh sửa số lượt xem"
+                                >
+                                  <span>{art.views?.toLocaleString()}</span>
+                                  <Edit className="w-3 h-3 text-slate-400 group-hover:text-amber-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </button>
                               </td>
                               <td className="py-3 px-2 font-mono text-slate-600">
-                                {art.likes?.toLocaleString()}
+                                <button
+                                  onClick={() => handleOpenQuickStats(art)}
+                                  className="hover:bg-slate-200/70 px-1.5 py-0.5 rounded flex items-center gap-1 group text-left transition"
+                                  title="Chỉnh sửa số lượt thích"
+                                >
+                                  <span>{art.likes?.toLocaleString()}</span>
+                                  <Edit className="w-3 h-3 text-slate-400 group-hover:text-amber-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </button>
                               </td>
                               <td className="py-3 px-2 text-slate-500 whitespace-nowrap">
                                 {art.publishedAtDate}
@@ -932,6 +977,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded transition"
                                   >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenQuickStats(art)}
+                                    title="Chỉnh sửa Lượt xem & Lượt thích"
+                                    className="p-1.5 text-slate-600 hover:text-amber-700 hover:bg-amber-50 rounded transition"
+                                  >
+                                    <Sliders className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => handleEditArticle(art)}
@@ -1186,6 +1238,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           onChange={(e) => setFormTags(e.target.value)}
                           placeholder="Finance, Banking, Rates"
                           className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center gap-1.5">
+                          <Eye className="w-3.5 h-3.5 text-slate-500" /> Số lượt xem (Views)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formViews}
+                          onChange={(e) => setFormViews(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-full text-xs font-mono font-bold px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center gap-1.5">
+                          <ThumbsUp className="w-3.5 h-3.5 text-slate-500" /> Số lượt thích (Likes)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formLikes}
+                          onChange={(e) => setFormLikes(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-full text-xs font-mono font-bold px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
                         />
                       </div>
                     </div>
@@ -1917,6 +1995,79 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Quick Edit Views & Likes Modal */}
+        {quickStatsArticle && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl border border-slate-200">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                <h3 className="font-serif font-bold text-base text-slate-900 flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-amber-600" />
+                  Chỉnh sửa Lượt xem & Lượt thích
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setQuickStatsArticle(null)}
+                  className="text-slate-400 hover:text-slate-600 transition"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-600 mb-4 line-clamp-2 font-semibold bg-slate-50 p-2.5 rounded border border-slate-200">
+                {quickStatsArticle.title}
+              </p>
+
+              <form onSubmit={handleSaveQuickStats} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center gap-1.5">
+                    <Eye className="w-3.5 h-3.5 text-amber-600" /> Số lượt xem (Views)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={quickViewsInput}
+                    onChange={(e) => setQuickViewsInput(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full text-sm font-mono font-bold px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center gap-1.5">
+                    <ThumbsUp className="w-3.5 h-3.5 text-amber-600" /> Số lượt thích (Likes)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={quickLikesInput}
+                    onChange={(e) => setQuickLikesInput(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full text-sm font-mono font-bold px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setQuickStatsArticle(null)}
+                    className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded transition"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingQuickStats}
+                    className="px-4 py-2 text-xs font-bold bg-amber-700 hover:bg-amber-800 text-white rounded shadow flex items-center gap-1.5 transition"
+                  >
+                    {isSavingQuickStats ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    Lưu thay đổi
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
