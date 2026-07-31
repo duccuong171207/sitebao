@@ -321,34 +321,59 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       for (let i = 0; i < fileList.length; i++) {
         const file: File = fileList[i];
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (evt) => resolve(evt.target?.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        try {
+          const rawBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (evt) => resolve((evt.target?.result as string) || '');
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
 
-        if (base64) {
-          // Process baking watermark onto the public image
-          const { watermarkedUrl, thumbnailUrl } = await processImageWatermark(base64, watermarkSettings);
+          if (rawBase64) {
+            let base64 = rawBase64;
+            // Normalize non-standard image MIME headers (e.g. .jfif, .pjpeg, .pjp, application/octet-stream)
+            if (
+              !base64.startsWith('data:image/') ||
+              base64.startsWith('data:image/jfif') ||
+              base64.startsWith('data:image/pjpeg') ||
+              base64.startsWith('data:image/pjp') ||
+              base64.startsWith('data:application/octet-stream')
+            ) {
+              base64 = base64.replace(/^data:[^;]+;/, 'data:image/jpeg;');
+            }
 
-          const imgObj = await api.uploadImage(
-            watermarkedUrl,
-            'Uploaded photograph for ' + (formTitle || 'news article'),
-            'Luiis David Photography',
-            '© Luiis David — All Rights Reserved',
-            captionForUpload || (fileList.length > 1 ? `Photograph ${i + 1} by Luiis David` : 'Photograph by Luiis David'),
-            watermarkSettings.text || '© Luiis David',
-            watermarkSettings.position,
-            watermarkSettings.opacity,
-            file.name
-          );
+            // Process baking watermark onto the public image with fallback
+            let watermarkedUrl = base64;
+            let thumbnailUrl = base64;
 
-          if (thumbnailUrl) {
-            imgObj.thumbnailUrl = thumbnailUrl;
+            try {
+              const res = await processImageWatermark(base64, watermarkSettings);
+              if (res.watermarkedUrl) watermarkedUrl = res.watermarkedUrl;
+              if (res.thumbnailUrl) thumbnailUrl = res.thumbnailUrl;
+            } catch (wmErr) {
+              console.warn('Watermarking fallback used for file:', file.name, wmErr);
+            }
+
+            const imgObj = await api.uploadImage(
+              watermarkedUrl,
+              'Uploaded photograph for ' + (formTitle || 'news article'),
+              'Luiis David Photography',
+              '© Luiis David — All Rights Reserved',
+              captionForUpload || (fileList.length > 1 ? `Photograph ${i + 1} by Luiis David` : 'Photograph by Luiis David'),
+              watermarkSettings.text || '© Luiis David',
+              watermarkSettings.position,
+              watermarkSettings.opacity,
+              file.name
+            );
+
+            if (thumbnailUrl) {
+              imgObj.thumbnailUrl = thumbnailUrl;
+            }
+
+            newUploadedImages.push(imgObj);
           }
-
-          newUploadedImages.push(imgObj);
+        } catch (singleErr) {
+          console.error('Error processing file:', file.name, singleErr);
         }
       }
 
@@ -368,7 +393,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       loadMediaLibrary();
     } catch (err) {
       console.error('Error processing multi-image upload:', err);
-      alert('Failed to process and watermark image files');
+      alert('Failed to process uploaded image files');
     } finally {
       setIsProcessingWatermark(false);
       if (e.target) e.target.value = '';

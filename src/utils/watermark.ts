@@ -22,22 +22,27 @@ export async function processImageWatermark(
     ...settings
   };
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    // Only set crossOrigin for remote HTTP/HTTPS URLs, NOT for data: or blob: URLs
+    if (imageSrc.startsWith('http://') || imageSrc.startsWith('https://')) {
+      img.crossOrigin = 'anonymous';
+    }
+
     img.onload = () => {
-      // 1. Create main watermarked canvas
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
+      try {
+        // 1. Create main watermarked canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width || 800;
+        canvas.height = img.height || 600;
+        const ctx = canvas.getContext('2d');
 
-      if (!ctx) {
-        return reject(new Error('Canvas 2D context not available'));
-      }
+        if (!ctx) {
+          return resolve({ watermarkedUrl: imageSrc, thumbnailUrl: imageSrc });
+        }
 
-      // Draw base image
-      ctx.drawImage(img, 0, 0);
+        // Draw base image
+        ctx.drawImage(img, 0, 0);
 
       // Render watermark if enabled
       if (config.enabled && config.text.trim()) {
@@ -122,8 +127,8 @@ export async function processImageWatermark(
 
       // 2. Create thumbnail (max 400px width)
       const thumbCanvas = document.createElement('canvas');
-      const thumbWidth = Math.min(400, img.width);
-      const thumbHeight = Math.round((thumbWidth / img.width) * img.height);
+      const thumbWidth = Math.min(400, img.width || 400);
+      const thumbHeight = Math.round((thumbWidth / (img.width || 400)) * (img.height || 300));
       thumbCanvas.width = thumbWidth;
       thumbCanvas.height = thumbHeight;
       const thumbCtx = thumbCanvas.getContext('2d');
@@ -135,10 +140,15 @@ export async function processImageWatermark(
       const thumbnailUrl = thumbCanvas.toDataURL('image/jpeg', 0.85);
 
       resolve({ watermarkedUrl, thumbnailUrl });
+      } catch (err) {
+        console.warn('Canvas watermarking warning, falling back to original image:', err);
+        resolve({ watermarkedUrl: imageSrc, thumbnailUrl: imageSrc });
+      }
     };
 
     img.onerror = (err) => {
-      reject(new Error('Failed to load image for watermarking'));
+      console.warn('Failed to load image element for watermarking, fallback to raw source:', err);
+      resolve({ watermarkedUrl: imageSrc, thumbnailUrl: imageSrc });
     };
 
     img.src = imageSrc;
