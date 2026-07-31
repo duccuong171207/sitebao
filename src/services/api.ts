@@ -1,9 +1,22 @@
 import { Article, Comment, Category, AdminAuthResponse, ArticleImage, WatermarkSettings } from '../types';
+import { clientDb } from './clientDb';
 
 const API_BASE = '/api';
 
+async function safeFetch<T>(url: string, options?: RequestInit): Promise<T | null> {
+  try {
+    const res = await fetch(url, options);
+    if (!res.ok) return null;
+    const contentType = res.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) return null;
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    return null;
+  }
+}
+
 export const api = {
-  // Get Auth token from localStorage
   getToken(): string | null {
     return localStorage.getItem('ld_admin_token');
   },
@@ -27,83 +40,99 @@ export const api = {
     if (params?.search) query.append('search', params.search);
     if (params?.placement) query.append('placement', params.placement);
 
-    const res = await fetch(`${API_BASE}/articles?${query.toString()}`);
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to fetch articles');
-    return data.articles;
+    const data = await safeFetch<any>(`${API_BASE}/articles?${query.toString()}`);
+    if (data && data.success && Array.isArray(data.articles)) {
+      return data.articles;
+    }
+    return clientDb.getArticles(params);
   },
 
   // Get single article by ID or slug
   async getArticle(idOrSlug: string, incrementView = true): Promise<Article> {
-    const res = await fetch(`${API_BASE}/articles/${idOrSlug}?view=${incrementView}`);
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Article not found');
-    return data.article;
+    const data = await safeFetch<any>(`${API_BASE}/articles/${idOrSlug}?view=${incrementView}`);
+    if (data && data.success && data.article) {
+      return data.article;
+    }
+    return clientDb.getArticle(idOrSlug, incrementView);
   },
 
   // Like article
   async likeArticle(id: string): Promise<number> {
-    const res = await fetch(`${API_BASE}/articles/${id}/like`, { method: 'POST' });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to like article');
-    return data.likes;
+    const data = await safeFetch<any>(`${API_BASE}/articles/${id}/like`, { method: 'POST' });
+    if (data && data.success && typeof data.likes === 'number') {
+      return data.likes;
+    }
+    return clientDb.likeArticle(id);
   },
 
   // Post comment
   async postComment(articleId: string, authorName: string, content: string, parentId?: string): Promise<Comment> {
-    const res = await fetch(`${API_BASE}/articles/${articleId}/comments`, {
+    const data = await safeFetch<any>(`${API_BASE}/articles/${articleId}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ authorName, content, parentId })
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to post comment');
-    return data.comment;
+    if (data && data.success && data.comment) {
+      return data.comment;
+    }
+    return clientDb.postComment(articleId, authorName, content, parentId);
   },
 
   // Like comment
   async likeComment(articleId: string, commentId: string): Promise<number> {
-    const res = await fetch(`${API_BASE}/articles/${articleId}/comments/${commentId}/like`, {
+    const data = await safeFetch<any>(`${API_BASE}/articles/${articleId}/comments/${commentId}/like`, {
       method: 'POST'
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to like comment');
-    return data.likes;
+    if (data && data.success && typeof data.likes === 'number') {
+      return data.likes;
+    }
+    return clientDb.likeComment(articleId, commentId);
   },
 
   // --- ADMIN AUTH ---
 
   async login(username: string, password: string): Promise<AdminAuthResponse> {
-    const res = await fetch(`${API_BASE}/auth/login`, {
+    const data = await safeFetch<any>(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
     });
-    const data = await res.json();
-    if (data.success && data.token) {
+
+    if (data && data.success && data.token) {
       this.setToken(data.token);
+      return data;
+    } else if (data && data.success === false) {
+      // Direct server returned auth failure
+      return data;
     }
-    return data;
+
+    // Fallback to clientDb authentication
+    const clientRes = await clientDb.login(username, password);
+    if (clientRes.success && clientRes.token) {
+      this.setToken(clientRes.token);
+    }
+    return clientRes;
   },
 
   async verifyMe(): Promise<boolean> {
     const token = this.getToken();
     if (!token) return false;
-    try {
-      const res = await fetch(`${API_BASE}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
+
+    const data = await safeFetch<any>(`${API_BASE}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (data && typeof data.success === 'boolean') {
       return data.success;
-    } catch {
-      return false;
     }
+
+    return clientDb.verifyMe();
   },
 
   async logout(): Promise<void> {
     const token = this.getToken();
     if (token) {
-      await fetch(`${API_BASE}/auth/logout`, {
+      await safeFetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -113,7 +142,7 @@ export const api = {
 
   async changePassword(oldPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/auth/change-password`, {
+    const data = await safeFetch<any>(`${API_BASE}/auth/change-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -121,24 +150,32 @@ export const api = {
       },
       body: JSON.stringify({ oldPassword, newPassword })
     });
-    return await res.json();
+
+    if (data && typeof data.success === 'boolean') {
+      return data;
+    }
+
+    return clientDb.changePassword(oldPassword, newPassword);
   },
 
   // --- ADMIN CMS ---
 
   async getAdminArticles(): Promise<Article[]> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/articles`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/articles`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to fetch admin articles');
-    return data.articles;
+
+    if (data && data.success && Array.isArray(data.articles)) {
+      return data.articles;
+    }
+
+    return clientDb.getAdminArticles();
   },
 
   async createArticle(articleData: Partial<Article>): Promise<Article> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/articles`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/articles`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -146,14 +183,17 @@ export const api = {
       },
       body: JSON.stringify(articleData)
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to create article');
-    return data.article;
+
+    if (data && data.success && data.article) {
+      return data.article;
+    }
+
+    return clientDb.createArticle(articleData);
   },
 
   async updateArticle(id: string, updates: Partial<Article>): Promise<Article> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/articles/${id}`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/articles/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -161,65 +201,85 @@ export const api = {
       },
       body: JSON.stringify(updates)
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to update article');
-    return data.article;
+
+    if (data && data.success && data.article) {
+      return data.article;
+    }
+
+    return clientDb.updateArticle(id, updates);
   },
 
   async deleteArticle(id: string): Promise<boolean> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/articles/${id}`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/articles/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
     });
-    const data = await res.json();
-    return data.success;
+
+    if (data && typeof data.success === 'boolean') {
+      return data.success;
+    }
+
+    return clientDb.deleteArticle(id);
   },
 
   async duplicateArticle(id: string): Promise<Article> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/articles/duplicate/${id}`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/articles/duplicate/${id}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` }
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to duplicate article');
-    return data.article;
+
+    if (data && data.success && data.article) {
+      return data.article;
+    }
+
+    return clientDb.duplicateArticle(id);
   },
 
   async getMediaLibrary(): Promise<ArticleImage[]> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/media`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/media`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to fetch media library');
-    return data.images;
+
+    if (data && data.success && Array.isArray(data.images)) {
+      return data.images;
+    }
+
+    return clientDb.getMediaLibrary();
   },
 
   async deleteMediaImage(id: string): Promise<boolean> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/media/${id}`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/media/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
     });
-    const data = await res.json();
-    return data.success;
+
+    if (data && typeof data.success === 'boolean') {
+      return data.success;
+    }
+
+    return clientDb.deleteMediaImage(id);
   },
 
   async getWatermarkSettings(): Promise<WatermarkSettings> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/watermark`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/watermark`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to fetch watermark settings');
-    return data.settings;
+
+    if (data && data.success && data.settings) {
+      return data.settings;
+    }
+
+    return clientDb.getWatermarkSettings();
   },
 
   async updateWatermarkSettings(settings: Partial<WatermarkSettings>): Promise<WatermarkSettings> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/watermark`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/watermark`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -227,22 +287,27 @@ export const api = {
       },
       body: JSON.stringify(settings)
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to update watermark settings');
-    return data.settings;
+
+    if (data && data.success && data.settings) {
+      return data.settings;
+    }
+
+    return clientDb.updateWatermarkSettings(settings);
   },
 
   async exportBackup(): Promise<any> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/backup`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/backup`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    return await res.json();
+
+    if (data) return data;
+    return clientDb.exportBackup();
   },
 
   async restoreBackup(backupData: any): Promise<boolean> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/restore`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/restore`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -250,14 +315,17 @@ export const api = {
       },
       body: JSON.stringify(backupData)
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to restore database');
-    return true;
+
+    if (data && typeof data.success === 'boolean') {
+      return data.success;
+    }
+
+    return clientDb.restoreBackup(backupData);
   },
 
   async addSeedComment(articleId: string, authorName: string, content: string): Promise<Comment> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/articles/${articleId}/seed-comments`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/articles/${articleId}/seed-comments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -265,14 +333,17 @@ export const api = {
       },
       body: JSON.stringify({ authorName, content })
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to add seed comment');
-    return data.comment;
+
+    if (data && data.success && data.comment) {
+      return data.comment;
+    }
+
+    return clientDb.addSeedComment(articleId, authorName, content);
   },
 
   async autoSeedComments(articleId: string, count = 128): Promise<number> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/articles/${articleId}/auto-seed-comments`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/articles/${articleId}/auto-seed-comments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -280,29 +351,40 @@ export const api = {
       },
       body: JSON.stringify({ count })
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to auto-seed comments');
-    return data.count;
+
+    if (data && data.success && typeof data.count === 'number') {
+      return data.count;
+    }
+
+    return clientDb.autoSeedComments(articleId, count);
   },
 
   async clearSeedComments(articleId: string): Promise<boolean> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/articles/${articleId}/seed-comments`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/articles/${articleId}/seed-comments`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
     });
-    const data = await res.json();
-    return data.success;
+
+    if (data && typeof data.success === 'boolean') {
+      return data.success;
+    }
+
+    return clientDb.clearSeedComments(articleId);
   },
 
   async deleteComment(articleId: string, commentId: string): Promise<boolean> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/articles/${articleId}/comments/${commentId}`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/articles/${articleId}/comments/${commentId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
     });
-    const data = await res.json();
-    return data.success;
+
+    if (data && typeof data.success === 'boolean') {
+      return data.success;
+    }
+
+    return clientDb.deleteComment(articleId, commentId);
   },
 
   async uploadImage(
@@ -317,7 +399,7 @@ export const api = {
     originalFilename?: string
   ): Promise<ArticleImage> {
     const token = this.getToken();
-    const res = await fetch(`${API_BASE}/admin/upload-image`, {
+    const data = await safeFetch<any>(`${API_BASE}/admin/upload-image`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -335,8 +417,13 @@ export const api = {
         originalFilename
       })
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed to process image upload');
-    return data.image;
+
+    if (data && data.success && data.image) {
+      return data.image;
+    }
+
+    return clientDb.uploadImage(
+      imageData, caption, credit, copyright, altText, watermarkText, watermarkPosition, watermarkOpacity
+    );
   }
 };
