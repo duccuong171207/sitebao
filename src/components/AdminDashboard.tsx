@@ -331,15 +331,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           if (rawBase64) {
             let base64 = rawBase64;
-            // Normalize non-standard image MIME headers (e.g. .jfif, .pjpeg, .pjp, application/octet-stream)
-            if (
-              !base64.startsWith('data:image/') ||
-              base64.startsWith('data:image/jfif') ||
-              base64.startsWith('data:image/pjpeg') ||
-              base64.startsWith('data:image/pjp') ||
-              base64.startsWith('data:application/octet-stream')
-            ) {
-              base64 = base64.replace(/^data:[^;]+;/, 'data:image/jpeg;');
+            
+            // Only normalize MIME type if the browser failed to detect a proper image MIME type (e.g. application/octet-stream)
+            if (!base64.startsWith('data:image/')) {
+              const ext = file.name.split('.').pop()?.toLowerCase() || '';
+              let mime = 'image/jpeg';
+              if (ext === 'png') mime = 'image/png';
+              else if (ext === 'gif') mime = 'image/gif';
+              else if (ext === 'webp') mime = 'image/webp';
+              
+              base64 = base64.replace(/^data:[^;]*/, `data:${mime}`);
             }
 
             // Process baking watermark onto the public image with fallback
