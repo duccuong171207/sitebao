@@ -440,6 +440,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setImages((prev) => prev.filter((i) => i.id !== id));
   };
 
+  const handleUpdateImageCaption = (id: string, caption: string) => {
+    setImages((prev) => prev.map((i) => (i.id === id ? { ...i, caption } : i)));
+  };
+
+  const handleUpdateImageCredit = (id: string, credit: string) => {
+    setImages((prev) => prev.map((i) => (i.id === id ? { ...i, credit } : i)));
+  };
+
   const handleAddVideo = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newVideoUrl.trim()) return;
@@ -1058,49 +1066,72 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <form onSubmit={handleSubmitArticle} className="space-y-6">
                   <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <h3 className="font-serif font-bold text-lg text-slate-900">
-                        {editingArticleId ? 'Edit News Article' : 'Compose Independent News Publication'}
-                      </h3>
+                      <div>
+                        <h3 className="font-serif font-bold text-lg text-slate-900">
+                          {editingArticleId ? 'Edit News Article' : 'Compose Independent News Publication'}
+                        </h3>
+                        <p className="text-xs text-slate-500 font-sans">
+                          Full UTF-8 Unicode content support for English, Vietnamese, and international text.
+                        </p>
+                      </div>
                       <button
                         type="submit"
-                        className="px-5 py-2 bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs rounded shadow flex items-center gap-1.5 transition"
+                        className="px-5 py-2 bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs rounded shadow flex items-center gap-1.5 transition cursor-pointer"
                       >
                         <Save className="w-4 h-4" /> Save & Publish
                       </button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* FIELD 1: TITLE */}
                       <div className="md:col-span-2">
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                          Main Headline Title *
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                            <span>1. Main Headline Title *</span>
+                            <span className="text-[10px] bg-amber-100 text-amber-800 font-bold uppercase px-1.5 py-0.5 rounded border border-amber-200">
+                              UTF-8 Unicode
+                            </span>
+                          </label>
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            {formTitle.length} chars
+                          </span>
+                        </div>
                         <input
                           type="text"
                           value={formTitle}
                           onChange={(e) => setFormTitle(e.target.value)}
-                          placeholder="e.g. Global Markets Shift as Central Banks Signal New Rate Cycle"
+                          placeholder="e.g. Global Markets Shift as Central Banks Signal New Rate Cycle / Enter title..."
                           className="w-full text-base font-serif font-bold px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          spellCheck={false}
                           required
                         />
                       </div>
 
+                      {/* FIELD 2: SUBTITLE */}
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                          Subtitle / Deck
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                            2. Subtitle / Deck
+                          </label>
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            {formSubtitle.length} chars
+                          </span>
+                        </div>
                         <input
                           type="text"
                           value={formSubtitle}
                           onChange={(e) => setFormSubtitle(e.target.value)}
-                          placeholder="Subheadline deck expanding on key points"
+                          placeholder="Subheadline deck expanding on key narrative points..."
                           className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          spellCheck={false}
                         />
                       </div>
 
+                      {/* FIELD 3: SLUG */}
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                            URL Slug (Đường dẫn cố định)
+                            3. Permanent URL Slug
                           </label>
                           <button
                             type="button"
@@ -1109,30 +1140,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 setFormSlug(slugifyVietnamese(formTitle));
                               }
                             }}
-                            className="text-[10px] text-amber-800 hover:text-amber-900 font-bold bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded border border-amber-200 transition-colors"
+                            className="text-[10px] text-amber-800 hover:text-amber-900 font-bold bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded border border-amber-200 transition-colors cursor-pointer"
                           >
-                            Tạo Slug Tiếng Việt Tự Động
+                            Auto-Generate Slug
                           </button>
                         </div>
                         <input
                           type="text"
                           value={formSlug}
                           onChange={(e) => setFormSlug(e.target.value)}
-                          placeholder="sua-loi-mo-ta-bai-dang-khi-viet-tieng-viet (để trống sẽ tự động tạo)"
+                          placeholder="article-headline-slug (leave blank to auto-generate)"
                           className="w-full text-xs font-mono px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          spellCheck={false}
                         />
                       </div>
 
+                      {/* FIELD 4: EXECUTIVE SUMMARY */}
                       <div className="md:col-span-2">
                         <div className="flex items-center justify-between mb-1">
                           <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                            <span>Mô tả bài đăng / Đoạn mở đầu (Executive Summary & Meta Description)</span>
-                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold uppercase px-1.5 py-0.5 rounded border border-emerald-200">
-                              UTF-8 Unicode Tiếng Việt Full
-                            </span>
+                            <span>4. Executive Summary & Meta Description</span>
                           </label>
                           <span className="text-[11px] text-slate-500 font-mono">
-                            {formSummary.length} ký tự ({formSummary.trim() ? formSummary.trim().split(/\s+/).length : 0} từ)
+                            {formSummary.length} chars ({formSummary.trim() ? formSummary.trim().split(/\s+/).length : 0} words)
                           </span>
                         </div>
                         <textarea
@@ -1144,34 +1174,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               setFormMetaDesc(e.target.value);
                             }
                           }}
-                          placeholder="Nhập phần mô tả vắn tắt bài đăng bằng Tiếng Việt (Ví dụ: Tóm tắt 2-3 câu chính của bài viết, hiển thị ở danh sách trang chủ và thẻ xem trước mạng xã hội...)"
+                          placeholder="Enter brief 2-3 sentence summary displayed on homepage cards and social media preview cards..."
                           className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none font-sans leading-relaxed"
+                          spellCheck={false}
                         />
-                        <p className="mt-1 text-[11px] text-slate-500 italic">
-                          * Hỗ trợ đầy đủ bảng mã Unicode Tiếng Việt (accent marks, ký tự đặc biệt, dấu câu). Mô tả này tự động đồng bộ sang thẻ OpenGraph Meta Description khi hiển thị.
-                        </p>
                       </div>
 
+                      {/* FIELD 5: BODY CONTENT (RICH TEXT EDITOR) */}
                       <div className="md:col-span-2">
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                          Full Editorial Body Content
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                            <span>5. Full Editorial Body Content</span>
+                          </label>
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            {formContent.replace(/<[^>]*>/g, '').length} chars ({formContent.trim() ? formContent.replace(/<[^>]*>/g, '').trim().split(/\s+/).length : 0} words)
+                          </span>
+                        </div>
                         <RichTextEditor
                           value={formContent}
                           onChange={setFormContent}
-                          placeholder="Full journalistic article text. Formatting applies directly."
-                          minHeight="400px"
+                          placeholder="Compose full journalistic article text..."
+                          minHeight="420px"
                         />
                       </div>
 
+                      {/* FIELD 6: CATEGORY */}
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                          Category Section
+                          6. Category Section
                         </label>
                         <select
                           value={formCategory}
                           onChange={(e) => setFormCategory(e.target.value as Category)}
-                          className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                          className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white font-sans"
                         >
                           <option value="World">World</option>
                           <option value="Business">Business</option>
@@ -1185,11 +1220,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </select>
                       </div>
 
+                      {/* FIELD 7: AUTHOR BYLINE */}
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center justify-between">
-                          <span>Editorial Byline / Author</span>
+                          <span>7. Editorial Byline / Author</span>
                           <span className="text-[10px] text-blue-700 font-bold uppercase bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                            Verified Badge Auto-Applied
+                            Verified Badge
                           </span>
                         </label>
                         <div className="relative">
@@ -1197,8 +1233,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             type="text"
                             value={formAuthor}
                             onChange={(e) => setFormAuthor(e.target.value)}
-                            placeholder="Luiis David"
+                            placeholder="e.g. Luiis David / Author Name..."
                             className="w-full text-xs font-bold px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            spellCheck={false}
                           />
                         </div>
                         <div className="mt-1.5 p-2 bg-slate-50 border border-slate-200 rounded flex items-center justify-between text-xs">
@@ -1207,14 +1244,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                       </div>
 
+                      {/* FIELD 8: STATUS */}
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                          Publication Status
+                          8. Publication Status
                         </label>
                         <select
                           value={formStatus}
                           onChange={(e) => setFormStatus(e.target.value as ArticleStatus)}
-                          className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                          className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white font-sans"
                         >
                           <option value="published">Published</option>
                           <option value="draft">Draft</option>
@@ -1224,14 +1262,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </select>
                       </div>
 
+                      {/* FIELD 9: PLACEMENT */}
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                          Homepage Placement
+                          9. Homepage Placement
                         </label>
                         <select
                           value={formPlacement}
                           onChange={(e) => setFormPlacement(e.target.value as ArticlePlacement)}
-                          className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                          className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white font-sans"
                         >
                           <option value="hero">Main Top Lead Story (Hero)</option>
                           <option value="breaking">Breaking News Banner</option>
@@ -1241,9 +1280,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </select>
                       </div>
 
+                      {/* FIELD 10: DATE & TIME */}
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                          Publish Date
+                          10. Publish Date
                         </label>
                         <input
                           type="date"
@@ -1256,7 +1296,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                            Time
+                            Publish Time
                           </label>
                           <input
                             type="text"
@@ -1264,6 +1304,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             onChange={(e) => setFormTime(e.target.value)}
                             placeholder="10:30"
                             className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            spellCheck={false}
                           />
                         </div>
                         <div>
@@ -1274,41 +1315,54 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             type="text"
                             value={formTimezone}
                             onChange={(e) => setFormTimezone(e.target.value)}
-                            placeholder="EST"
+                            placeholder="EST / ICT"
                             className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            spellCheck={false}
                           />
                         </div>
                       </div>
 
+                      {/* FIELD 11: SEO TITLE */}
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                          SEO Meta Title
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                            11. SEO Meta Title
+                          </label>
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            {formSeoTitle.length} chars
+                          </span>
+                        </div>
                         <input
                           type="text"
                           value={formSeoTitle}
                           onChange={(e) => setFormSeoTitle(e.target.value)}
-                          placeholder="Search engine title tag"
+                          placeholder="Search engine meta title tag..."
                           className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          spellCheck={false}
                         />
                       </div>
 
+                      {/* FIELD 12: TAGS */}
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                          Keywords / Tags (comma separated)
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                            12. Keywords / Tags (comma separated)
+                          </label>
+                        </div>
                         <input
                           type="text"
                           value={formTags}
                           onChange={(e) => setFormTags(e.target.value)}
-                          placeholder="Finance, Banking, Rates"
+                          placeholder="Finance, Markets, Economy, Technology..."
                           className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          spellCheck={false}
                         />
                       </div>
 
+                      {/* FIELD 13: VIEWS & LIKES */}
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center gap-1.5">
-                          <Eye className="w-3.5 h-3.5 text-slate-500" /> Số lượt xem (Views)
+                          <Eye className="w-3.5 h-3.5 text-slate-500" /> Article Views
                         </label>
                         <input
                           type="number"
@@ -1321,7 +1375,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center gap-1.5">
-                          <ThumbsUp className="w-3.5 h-3.5 text-slate-500" /> Số lượt thích (Likes)
+                          <ThumbsUp className="w-3.5 h-3.5 text-slate-500" /> Article Likes
                         </label>
                         <input
                           type="number"
@@ -1342,7 +1396,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           <Camera className="w-4 h-4 text-amber-700" /> Article Photography & Watermark Protection
                         </h4>
                         <p className="text-xs text-slate-500">
-                          Uploaded photographs automatically receive a rendered <strong>{watermarkSettings.text}</strong> watermark overlay.
+                          Uploaded photographs automatically receive a crisp <strong>{watermarkSettings.text}</strong> watermark overlay.
                         </p>
                       </div>
                       <span className="text-xs bg-amber-50 text-amber-800 px-2.5 py-1 rounded border border-amber-200 font-medium">
@@ -1368,18 +1422,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-amber-700 file:text-white hover:file:bg-amber-800 cursor-pointer"
                         />
                         <p className="text-[11px] text-slate-500 mt-1">
-                          Select 1, 5, or 20+ images at once. System automatically embeds <strong>{watermarkSettings.text || '© Luiis David'}</strong> onto every image.
+                          System automatically embeds <strong>{watermarkSettings.text || '© Luiis David'}</strong> onto all uploaded photographs.
                         </p>
                         {isProcessingWatermark && (
                           <div className="text-xs text-amber-700 flex items-center gap-1.5 mt-2 font-medium bg-amber-50 p-2 rounded border border-amber-200">
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-700" /> Automatically embedding © watermark on all uploaded photographs...
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-700" /> Embedding © watermark on uploaded photographs...
                           </div>
                         )}
                       </div>
 
                       <div>
                         <label className="block text-xs font-bold text-slate-800 mb-1">
-                          Or Watermark External Image URL
+                          Or Direct External Image URL
                         </label>
                         <div className="flex gap-2">
                           <input
@@ -1388,12 +1442,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             onChange={(e) => setNewImgUrl(e.target.value)}
                             placeholder="https://images.unsplash.com/..."
                             className="flex-1 text-xs px-3 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            spellCheck={false}
                           />
                           <button
                             onClick={handleAddImageFromUrl}
                             type="button"
                             disabled={isProcessingWatermark}
-                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded transition"
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded transition cursor-pointer"
                           >
                             Apply Watermark
                           </button>
@@ -1421,7 +1476,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               <div className="h-36 bg-slate-200 relative overflow-hidden">
                                 <img
                                   src={img.url}
-                                  alt={img.altText}
+                                  alt={img.altText || formTitle}
                                   className="w-full h-full object-cover"
                                 />
                                 {img.isFeatured && (
@@ -1430,15 +1485,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   </span>
                                 )}
                               </div>
-                              <div className="p-3 space-y-1.5 text-xs">
-                                <p className="font-semibold text-slate-800 line-clamp-1">{img.caption || 'No caption'}</p>
-                                <p className="text-[11px] text-slate-500">{img.credit} — {img.copyrightNotice || '© Luiis David'}</p>
+                              <div className="p-3 space-y-2 text-xs">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
+                                    Image Caption:
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={img.caption || ''}
+                                    onChange={(e) => handleUpdateImageCaption(img.id, e.target.value)}
+                                    placeholder="Enter image caption..."
+                                    className="w-full text-xs px-2 py-1 border border-slate-300 rounded focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                                    spellCheck={false}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
+                                    Photo Credit / Source:
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={img.credit || ''}
+                                    onChange={(e) => handleUpdateImageCredit(img.id, e.target.value)}
+                                    placeholder="e.g. Photo: Reuters / Author..."
+                                    className="w-full text-xs px-2 py-1 border border-slate-300 rounded focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                                    spellCheck={false}
+                                  />
+                                </div>
+
                                 <div className="pt-2 flex items-center justify-between border-t border-slate-200">
                                   {!img.isFeatured && (
                                     <button
                                       type="button"
                                       onClick={() => handleSetFeaturedImage(img.id)}
-                                      className="text-[11px] font-semibold text-amber-800 hover:underline"
+                                      className="text-[11px] font-semibold text-amber-800 hover:underline cursor-pointer"
                                     >
                                       Make Lead Image
                                     </button>
@@ -1446,7 +1527,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteImage(img.id)}
-                                    className="text-[11px] font-semibold text-red-700 hover:underline ml-auto"
+                                    className="text-[11px] font-semibold text-red-700 hover:underline ml-auto cursor-pointer"
                                   >
                                     Remove
                                   </button>
@@ -1457,76 +1538,82 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                       )}
                     </div>
+                  </div>
 
-                    {/* Add Video Section */}
-                    <div className="pt-6 border-t border-slate-200 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                          <Play size={16} className="text-[#990000]" /> + Add Video (VidHosting.in / Direct URL)
-                        </h4>
-                        <span className="text-[11px] text-slate-500 font-mono">
-                          Supports MP4, WebM, MOV
-                        </span>
+                  {/* Add Video Section */}
+                  <div className="pt-6 border-t border-slate-200 space-y-4 bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                        <Play size={16} className="text-[#990000]" /> + Add Article Video (VidHosting.in / Direct URL)
+                      </h4>
+                      <span className="text-[11px] text-slate-500 font-mono">
+                        Supports MP4, WebM, MOV formats
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1">
+                          Direct Video URL (VidHosting.in / .mp4 / .webm) *
+                        </label>
+                        <input
+                          type="url"
+                          value={newVideoUrl}
+                          onChange={(e) => setNewVideoUrl(e.target.value)}
+                          placeholder="https://vidhosting.in/.../video.mp4"
+                          className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-[#990000] focus:outline-none font-mono"
+                          spellCheck={false}
+                        />
                       </div>
 
-                      <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-slate-800 mb-1">
-                            Video Direct URL (VidHosting.in / .mp4 / .webm) *
-                          </label>
-                          <input
-                            type="url"
-                            value={newVideoUrl}
-                            onChange={(e) => setNewVideoUrl(e.target.value)}
-                            placeholder="https://vidhosting.in/.../video.mp4"
-                            className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-[#990000] focus:outline-none font-mono"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-800 mb-1">Video Title (Optional)</label>
-                            <input
-                              type="text"
-                              value={newVideoTitle}
-                              onChange={(e) => setNewVideoTitle(e.target.value)}
-                              placeholder="e.g. Market Briefing Footage"
-                              className="w-full text-xs px-3 py-1.5 border border-slate-300 rounded focus:outline-none"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-800 mb-1">Video Poster / Thumbnail Image URL (Optional)</label>
-                            <input
-                              type="url"
-                              value={newVideoPoster}
-                              onChange={(e) => setNewVideoPoster(e.target.value)}
-                              placeholder="https://images.unsplash.com/..."
-                              className="w-full text-xs px-3 py-1.5 border border-slate-300 rounded focus:outline-none font-mono"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-slate-800 mb-1">Video Caption</label>
+                          <label className="block text-xs font-bold text-slate-800 mb-1">Video Title</label>
                           <input
                             type="text"
-                            value={newVideoCaption}
-                            onChange={(e) => setNewVideoCaption(e.target.value)}
-                            placeholder="Footage from the latest developments in New York."
+                            value={newVideoTitle}
+                            onChange={(e) => setNewVideoTitle(e.target.value)}
+                            placeholder="Enter video title..."
                             className="w-full text-xs px-3 py-1.5 border border-slate-300 rounded focus:outline-none"
+                            spellCheck={false}
                           />
                         </div>
-
                         <div>
-                          <label className="block text-xs font-bold text-slate-800 mb-1">Video Description / Full Details</label>
-                          <textarea
-                            value={newVideoDescription}
-                            onChange={(e) => setNewVideoDescription(e.target.value)}
-                            rows={2}
-                            placeholder="Detailed description displayed underneath video player..."
-                            className="w-full text-xs px-3 py-1.5 border border-slate-300 rounded focus:outline-none"
+                          <label className="block text-xs font-bold text-slate-800 mb-1">Video Poster / Thumbnail URL</label>
+                          <input
+                            type="url"
+                            value={newVideoPoster}
+                            onChange={(e) => setNewVideoPoster(e.target.value)}
+                            placeholder="https://images.unsplash.com/..."
+                            className="w-full text-xs px-3 py-1.5 border border-slate-300 rounded focus:outline-none font-mono"
+                            spellCheck={false}
                           />
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1">Video Caption</label>
+                        <input
+                          type="text"
+                          value={newVideoCaption}
+                          onChange={(e) => setNewVideoCaption(e.target.value)}
+                          placeholder="Enter video caption..."
+                          className="w-full text-xs px-3 py-1.5 border border-slate-300 rounded focus:outline-none"
+                          spellCheck={false}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1">Video Detailed Description</label>
+                        <textarea
+                          value={newVideoDescription}
+                          onChange={(e) => setNewVideoDescription(e.target.value)}
+                          rows={2}
+                          placeholder="Enter detailed video description..."
+                          className="w-full text-xs px-3 py-1.5 border border-slate-300 rounded focus:outline-none"
+                          spellCheck={false}
+                        />
+                      </div>
 
                         <div className="flex justify-end pt-1">
                           <button
@@ -1602,7 +1689,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         )}
                       </div>
                     </div>
-                  </div>
 
                   <div className="flex justify-end gap-3 pt-2">
                     <button
