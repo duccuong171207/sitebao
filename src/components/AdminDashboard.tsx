@@ -1418,14 +1418,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </label>
                         <input
                           type="file"
-                          accept="image/*, .jpg, .jpeg, .png, .webp, .gif, .bmp, image/jpeg, image/png, image/webp"
+                          accept="image/*, .jpg, .jpeg, .jfif, .png, .webp, .gif, .bmp, image/jpeg, image/jfif, image/pjpeg, image/png, image/webp"
                           multiple
                           onChange={handleFileUpload}
                           disabled={isProcessingWatermark}
                           className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-amber-700 file:text-white hover:file:bg-amber-800 cursor-pointer"
                         />
                         <p className="text-[11px] text-slate-500 mt-1">
-                          Hỗ trợ định dạng JPG, PNG, WEBP, GIF. Tự động đính watermark <strong>{watermarkSettings.text || '© Luiis David'}</strong>.
+                          Hỗ trợ định dạng JPG, PNG, JFIF, WEBP, GIF. Tự động đính watermark <strong>{watermarkSettings.text || '© Luiis David'}</strong>.
                         </p>
                         {isProcessingWatermark && (
                           <div className="text-xs text-amber-700 flex items-center gap-1.5 mt-2 font-medium bg-amber-50 p-2 rounded border border-amber-200">
