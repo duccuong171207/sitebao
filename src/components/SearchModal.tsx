@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, X, Calendar, ArrowRight } from 'lucide-react';
 import { Article } from '../types';
 import { ArticleCard } from './ArticleCard';
+import { removeVietnameseTones } from '../services/clientDb';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -25,14 +26,18 @@ export const SearchModal: React.FC<SearchModalProps> = ({
       return;
     }
     const q = query.toLowerCase().trim();
+    const qNorm = removeVietnameseTones(q);
     const results = articles.filter(
       (a) =>
         a.title.toLowerCase().includes(q) ||
+        removeVietnameseTones(a.title).toLowerCase().includes(qNorm) ||
         a.subtitle.toLowerCase().includes(q) ||
+        removeVietnameseTones(a.subtitle).toLowerCase().includes(qNorm) ||
         a.summary.toLowerCase().includes(q) ||
+        removeVietnameseTones(a.summary).toLowerCase().includes(qNorm) ||
         a.author.toLowerCase().includes(q) ||
         a.category.toLowerCase().includes(q) ||
-        a.tags.some((t) => t.toLowerCase().includes(q))
+        a.tags.some((t) => t.toLowerCase().includes(q) || removeVietnameseTones(t).toLowerCase().includes(qNorm))
     );
     setFiltered(results);
   }, [query, articles]);

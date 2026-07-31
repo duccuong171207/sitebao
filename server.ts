@@ -4,6 +4,16 @@ import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { db } from './src/server/db.js';
 
+function escapeHtmlAttr(str: string = ''): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/[\r\n]+/g, ' ');
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -430,10 +440,13 @@ async function startServer() {
         let html = await vite.transformIndexHtml(req.originalUrl, template);
         
         if (article) {
+          const safeTitle = escapeHtmlAttr(`${article.title} — THE DAILY LEDGER`);
+          const safeDesc = escapeHtmlAttr(article.summary || article.content.replace(/<[^>]*>/g, '').substring(0, 180) + '...');
+          const safeImg = escapeHtmlAttr(article.images && article.images.length > 0 ? article.images[0].url : '');
           const ogTags = `
-            <meta property="og:title" content="${article.title} — THE DAILY LEDGER" />
-            <meta property="og:description" content="${article.summary || article.content.substring(0, 150)}..." />
-            <meta property="og:image" content="${article.images && article.images.length > 0 ? article.images[0].url : ''}" />
+            <meta property="og:title" content="${safeTitle}" />
+            <meta property="og:description" content="${safeDesc}" />
+            <meta property="og:image" content="${safeImg}" />
             <meta property="og:url" content="https://${req.get('host')}/ledger/${article.slug || article.id}" />
             <meta property="og:type" content="article" />
             <meta name="author" content="Luiis David ✓" />
@@ -441,7 +454,7 @@ async function startServer() {
           html = html.replace('</head>', `${ogTags}</head>`);
         }
         
-        res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+        res.status(200).set({ 'Content-Type': 'text/html; charset=utf-8' }).end(html);
       } catch (e) {
         next(e);
       }
@@ -468,10 +481,13 @@ async function startServer() {
         let html = fs.readFileSync(path.join(distPath, 'index.html'), 'utf-8');
         
         if (article) {
+          const safeTitle = escapeHtmlAttr(`${article.title} — THE DAILY LEDGER`);
+          const safeDesc = escapeHtmlAttr(article.summary || article.content.replace(/<[^>]*>/g, '').substring(0, 180) + '...');
+          const safeImg = escapeHtmlAttr(article.images && article.images.length > 0 ? article.images[0].url : '');
           const ogTags = `
-            <meta property="og:title" content="${article.title} — THE DAILY LEDGER" />
-            <meta property="og:description" content="${article.summary || article.content.substring(0, 150)}..." />
-            <meta property="og:image" content="${article.images && article.images.length > 0 ? article.images[0].url : ''}" />
+            <meta property="og:title" content="${safeTitle}" />
+            <meta property="og:description" content="${safeDesc}" />
+            <meta property="og:image" content="${safeImg}" />
             <meta property="og:url" content="https://${req.get('host')}/ledger/${article.slug || article.id}" />
             <meta property="og:type" content="article" />
             <meta name="author" content="Luiis David ✓" />
@@ -479,7 +495,7 @@ async function startServer() {
           html = html.replace('</head>', `${ogTags}</head>`);
         }
         
-        res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+        res.status(200).set({ 'Content-Type': 'text/html; charset=utf-8' }).end(html);
       } catch (e) {
         res.sendFile(path.join(distPath, 'index.html'));
       }

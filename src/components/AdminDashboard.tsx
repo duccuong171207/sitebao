@@ -10,6 +10,7 @@ import { api } from '../services/api';
 import { processImageWatermark, DEFAULT_WATERMARK_SETTINGS } from '../utils/watermark';
 import { VerifiedAuthor } from './VerifiedAuthor';
 import { RichTextEditor } from './RichTextEditor';
+import { slugifyVietnamese, removeVietnameseTones } from '../services/clientDb';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -55,6 +56,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [formSeoTitle, setFormSeoTitle] = useState('');
   const [formMetaDesc, setFormMetaDesc] = useState('');
   const [formSlug, setFormSlug] = useState('');
+  const [adminSearchQuery, setAdminSearchQuery] = useState('');
 
   // Multiple Images State
   const [images, setImages] = useState<ArticleImage[]>([]);
@@ -526,10 +528,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleExportCSV = () => {
     if (articles.length === 0) return;
-    const headers = ['ID', 'Title', 'Category', 'Author', 'Status', 'Placement', 'Views', 'Likes', 'Comments', 'Date'];
+    const headers = ['ID', 'Title', 'Subtitle', 'Summary', 'Category', 'Author', 'Status', 'Placement', 'Views', 'Likes', 'Comments', 'Date'];
     const rows = articles.map(a => [
       a.id,
-      `"${a.title.replace(/"/g, '""')}"`,
+      `"${(a.title || '').replace(/"/g, '""')}"`,
+      `"${(a.subtitle || '').replace(/"/g, '""')}"`,
+      `"${(a.summary || '').replace(/"/g, '""')}"`,
       a.category,
       a.author,
       a.status,
@@ -539,14 +543,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       a.commentCount,
       a.publishedAtDate
     ]);
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvString = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.href = url;
     link.setAttribute('download', `luiis_david_articles_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Submit Article Create / Update
@@ -878,6 +884,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </div>
                   </div>
 
+                  {/* Search bar for admin articles */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={adminSearchQuery}
+                      onChange={(e) => setAdminSearchQuery(e.target.value)}
+                      placeholder="Tìm kiếm bài viết theo tiêu đề, mô tả hoặc từ khóa tiếng Việt (có hoặc không dấu)..."
+                      className="w-full text-xs px-3.5 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white shadow-2xs font-sans"
+                    />
+                    {adminSearchQuery && (
+                      <button
+                        onClick={() => setAdminSearchQuery('')}
+                        className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-600 font-bold"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
                   {isLoadingArticles ? (
                     <div className="py-12 text-center text-slate-500 flex items-center justify-center gap-2 text-sm">
                       <RefreshCw className="w-4 h-4 animate-spin text-amber-600" /> Loading editorial database...
@@ -902,7 +927,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-sans">
-                          {articles.map((art) => (
+                          {articles.filter(a => {
+                            if (!adminSearchQuery.trim()) return true;
+                            const q = adminSearchQuery.toLowerCase().trim();
+                            const qNorm = removeVietnameseTones(q);
+                            return (
+                              a.title.toLowerCase().includes(q) ||
+                              removeVietnameseTones(a.title).toLowerCase().includes(qNorm) ||
+                              a.summary.toLowerCase().includes(q) ||
+                              removeVietnameseTones(a.summary).toLowerCase().includes(qNorm) ||
+                              a.category.toLowerCase().includes(q)
+                            );
+                          }).map((art) => (
                             <tr key={art.id} className="hover:bg-slate-50/80 transition">
                               <td className="py-3 px-4 font-serif font-bold text-slate-900 max-w-md">
                                 <div className="line-clamp-1">{art.title}</div>
@@ -1062,29 +1098,58 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                          URL Slug (Custom Permalinks)
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                            URL Slug (Đường dẫn cố định)
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (formTitle.trim()) {
+                                setFormSlug(slugifyVietnamese(formTitle));
+                              }
+                            }}
+                            className="text-[10px] text-amber-800 hover:text-amber-900 font-bold bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded border border-amber-200 transition-colors"
+                          >
+                            Tạo Slug Tiếng Việt Tự Động
+                          </button>
+                        </div>
                         <input
                           type="text"
                           value={formSlug}
                           onChange={(e) => setFormSlug(e.target.value)}
-                          placeholder="global-markets-shift-rate-cycle (leave blank to auto-generate)"
+                          placeholder="sua-loi-mo-ta-bai-dang-khi-viet-tieng-viet (để trống sẽ tự động tạo)"
                           className="w-full text-xs font-mono px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
                         />
                       </div>
 
                       <div className="md:col-span-2">
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                          Executive Summary (Lead Paragraph)
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                            <span>Mô tả bài đăng / Đoạn mở đầu (Executive Summary & Meta Description)</span>
+                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold uppercase px-1.5 py-0.5 rounded border border-emerald-200">
+                              UTF-8 Unicode Tiếng Việt Full
+                            </span>
+                          </label>
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            {formSummary.length} ký tự ({formSummary.trim() ? formSummary.trim().split(/\s+/).length : 0} từ)
+                          </span>
+                        </div>
                         <textarea
-                          rows={2}
+                          rows={3}
                           value={formSummary}
-                          onChange={(e) => setFormSummary(e.target.value)}
-                          placeholder="Brief 2-3 sentence summary displayed in article feeds"
-                          className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          onChange={(e) => {
+                            setFormSummary(e.target.value);
+                            if (!formMetaDesc.trim() || formMetaDesc === formSummary) {
+                              setFormMetaDesc(e.target.value);
+                            }
+                          }}
+                          placeholder="Nhập phần mô tả vắn tắt bài đăng bằng Tiếng Việt (Ví dụ: Tóm tắt 2-3 câu chính của bài viết, hiển thị ở danh sách trang chủ và thẻ xem trước mạng xã hội...)"
+                          className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none font-sans leading-relaxed"
                         />
+                        <p className="mt-1 text-[11px] text-slate-500 italic">
+                          * Hỗ trợ đầy đủ bảng mã Unicode Tiếng Việt (accent marks, ký tự đặc biệt, dấu câu). Mô tả này tự động đồng bộ sang thẻ OpenGraph Meta Description khi hiển thị.
+                        </p>
                       </div>
 
                       <div className="md:col-span-2">

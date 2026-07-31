@@ -53,6 +53,40 @@ const CACHE_KEY_PASS = 'ld_custom_admin_password';
 const CACHE_KEY_WATERMARK = 'ld_watermark_settings';
 const CACHE_KEY_MEDIA = 'ld_media_library';
 
+export function removeVietnameseTones(str: string): string {
+  if (!str) return '';
+  let result = str;
+  result = result.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, 'a');
+  result = result.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, 'A');
+  result = result.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, 'e');
+  result = result.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, 'E');
+  result = result.replace(/ì|í|ị|ỉ|ĩ/g, 'i');
+  result = result.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, 'I');
+  result = result.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, 'o');
+  result = result.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, 'O');
+  result = result.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, 'u');
+  result = result.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, 'U');
+  result = result.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, 'y');
+  result = result.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, 'Y');
+  result = result.replace(/đ/g, 'd');
+  result = result.replace(/Đ/g, 'D');
+  result = result.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  result = result.replace(/\u02C6|\u0306|\u031B/g, '');
+  result = result.replace(/\u0300|\u0301|\u0303|\u0309|\u0323/g, '');
+  return result;
+}
+
+export function slugifyVietnamese(text: string): string {
+  if (!text) return '';
+  const clean = removeVietnameseTones(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return clean || 'bai-viet-' + Date.now();
+}
+
 function getLocalArticles(): Article[] {
   try {
     const cached = localStorage.getItem(CACHE_KEY_ARTICLES);
@@ -143,11 +177,14 @@ export const clientDb = {
 
     if (params?.search && params.search.trim()) {
       const q = params.search.toLowerCase().trim();
+      const qNorm = removeVietnameseTones(q);
       filtered = filtered.filter(a => 
         a.title.toLowerCase().includes(q) || 
+        removeVietnameseTones(a.title).toLowerCase().includes(qNorm) ||
         a.summary.toLowerCase().includes(q) ||
+        removeVietnameseTones(a.summary).toLowerCase().includes(qNorm) ||
         a.category.toLowerCase().includes(q) ||
-        (a.tags && a.tags.some(t => t.toLowerCase().includes(q)))
+        (a.tags && a.tags.some(t => t.toLowerCase().includes(q) || removeVietnameseTones(t).toLowerCase().includes(qNorm)))
       );
     }
 
@@ -320,10 +357,9 @@ export const clientDb = {
 
   async createArticle(articleData: Partial<Article>): Promise<Article> {
     const newId = 'ld-story-' + Date.now();
-    const slug = (articleData.title || 'untitled')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
+    const slug = articleData.slug 
+      ? slugifyVietnamese(articleData.slug) 
+      : slugifyVietnamese(articleData.title || 'untitled-story');
 
     const now = new Date();
     const YYYY = now.getFullYear();
