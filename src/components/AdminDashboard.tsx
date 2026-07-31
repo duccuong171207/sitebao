@@ -11,6 +11,7 @@ import { processImageWatermark, DEFAULT_WATERMARK_SETTINGS } from '../utils/wate
 import { VerifiedAuthor } from './VerifiedAuthor';
 import { RichTextEditor } from './RichTextEditor';
 import { slugifyVietnamese, removeVietnameseTones } from '../services/clientDb';
+import { formatArticleDisplayDate } from '../utils/dateUtils';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -231,7 +232,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setFormTags('Finance, Global Trade');
     setFormStatus('published');
     setFormPlacement('normal');
-    setFormDate('2026-07-31');
+    const todayStr = new Date().toISOString().split('T')[0];
+    setFormDate(todayStr);
     setFormTime('10:30');
     setFormTimezone('EST');
     setFormViews(125000);
@@ -271,7 +273,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setFormTags((art.tags || []).join(', '));
     setFormStatus(art.status);
     setFormPlacement(art.placement);
-    setFormDate(art.publishedAtDate || '2026-07-31');
+    setFormDate(art.publishedAtDate || new Date().toISOString().split('T')[0]);
     setFormTime(art.publishedAtTime || '10:30');
     setFormTimezone(art.timezone || 'EST');
     setFormViews(art.views || 0);
@@ -584,6 +586,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       publishedAtDate: formDate,
       publishedAtTime: formTime,
       timezone: formTimezone,
+      displayDateTime: formatArticleDisplayDate(formDate, formTime, formTimezone),
       views: formViews,
       likes: formLikes,
       seoTitle: formSeoTitle.trim() || `${formTitle.trim()} | Luiis David`,

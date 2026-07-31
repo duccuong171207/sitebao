@@ -2,6 +2,7 @@ import React from 'react';
 import { Eye, ThumbsUp, MessageSquare, Clock, Camera, Play } from 'lucide-react';
 import { Article } from '../types';
 import { VerifiedAuthor } from './VerifiedAuthor';
+import { formatArticleDisplayDate } from '../utils/dateUtils';
 
 interface ArticleCardProps {
   article: Article;
@@ -77,7 +78,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
               <span className="text-gray-400">•</span>
               <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight flex items-center gap-1">
                 <Clock size={11} />
-                {article.displayDateTime}
+                {article.displayDateTime || formatArticleDisplayDate(article.publishedAtDate, article.publishedAtTime, article.timezone)}
               </span>
             </div>
 
@@ -148,7 +149,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                 {article.category}
               </span>
               <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight font-sans-ui">
-                {article.displayDateTime}
+                {article.displayDateTime || formatArticleDisplayDate(article.publishedAtDate, article.publishedAtTime, article.timezone)}
               </span>
             </div>
             <h3 className="font-serif-headline text-sm font-bold text-[#111111] group-hover:underline leading-snug line-clamp-2 break-words">
@@ -184,7 +185,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
           {article.title}
         </h4>
         <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight block mt-1 font-sans-ui">
-          {article.displayDateTime} • {formatStatNumber(article.views)} Views
+          {article.displayDateTime || formatArticleDisplayDate(article.publishedAtDate, article.publishedAtTime, article.timezone)} • {formatStatNumber(article.views)} Views
         </span>
       </a>
     );
@@ -258,7 +259,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
           </span>
           <span className="text-[10px] text-gray-400 font-bold">•</span>
           <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">
-            {article.displayDateTime}
+            {article.displayDateTime || formatArticleDisplayDate(article.publishedAtDate, article.publishedAtTime, article.timezone)}
           </span>
         </div>
 

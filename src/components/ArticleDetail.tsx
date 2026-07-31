@@ -9,6 +9,7 @@ import { ImageLightbox } from './ImageLightbox';
 import { ArticleCard } from './ArticleCard';
 import { VerifiedAuthor } from './VerifiedAuthor';
 import { FormattedContent } from './FormattedContent';
+import { formatArticleDisplayDate } from '../utils/dateUtils';
 
 interface ArticleDetailProps {
   article: Article;
@@ -204,7 +205,7 @@ export const ArticleDetail: React.FC<ArticleDetailProps> = ({
             <span className="text-gray-400">•</span>
             <span className="text-gray-700 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1 font-sans">
               <Clock size={12} className="text-red-700" />
-              Published: {article.displayDateTime}
+              Published: {article.displayDateTime || formatArticleDisplayDate(article.publishedAtDate, article.publishedAtTime, article.timezone)}
             </span>
           </div>
 

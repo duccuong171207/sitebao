@@ -22,6 +22,7 @@ import {
   ArticlePlacement,
   WatermarkPosition
 } from '../types';
+import { formatArticleDisplayDate, normalizeArticleDates } from '../utils/dateUtils';
 
 const DEFAULT_WATERMARK: WatermarkSettings = {
   enabled: true,
@@ -110,7 +111,7 @@ function saveLocalArticles(articles: Article[]) {
   }
 }
 
-let memoryArticles: Article[] = getLocalArticles();
+let memoryArticles: Article[] = getLocalArticles().map(normalizeArticleDates);
 
 // Ensure seed comments are attached to articles if missing
 memoryArticles.forEach((a) => {
@@ -368,6 +369,11 @@ export const clientDb = {
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');
 
+    const publishedAtDate = articleData.publishedAtDate || `${YYYY}-${MM}-${DD}`;
+    const publishedAtTime = articleData.publishedAtTime || `${hh}:${mm}`;
+    const timezone = articleData.timezone || 'EST';
+    const displayDateTime = articleData.displayDateTime || formatArticleDisplayDate(publishedAtDate, publishedAtTime, timezone);
+
     const newArticle: Article = {
       id: newId,
       slug,
@@ -378,22 +384,23 @@ export const clientDb = {
       author: articleData.author || 'Luiis David',
       category: (articleData.category as Category) || 'World',
       tags: articleData.tags || ['Editorial', 'News'],
-      publishedAtDate: articleData.publishedAtDate || `${YYYY}-${MM}-${DD}`,
-      publishedAtTime: articleData.publishedAtTime || `${hh}:${mm}`,
-      timezone: articleData.timezone || 'EST',
-      displayDateTime: articleData.displayDateTime || `${YYYY}-${MM}-${DD} ${hh}:${mm} EST`,
+      publishedAtDate,
+      publishedAtTime,
+      timezone,
+      displayDateTime,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
       status: articleData.status || 'published',
       placement: (articleData.placement as ArticlePlacement) || 'normal',
-      views: 0,
-      likes: 0,
+      views: articleData.views || 0,
+      likes: articleData.likes || 0,
       commentCount: 0,
-      shares: 0,
+      shares: articleData.shares || 0,
       seoTitle: articleData.seoTitle || articleData.title || '',
       metaDescription: articleData.metaDescription || articleData.summary || '',
       comments: [],
-      images: articleData.images || []
+      images: articleData.images || [],
+      videos: articleData.videos || []
     };
 
     memoryArticles.unshift(newArticle);
@@ -413,9 +420,19 @@ export const clientDb = {
     const index = memoryArticles.findIndex(a => a.id === id);
     if (index === -1) throw new Error('Article not found');
 
+    const current = memoryArticles[index];
+    const updatedDate = updates.publishedAtDate !== undefined ? updates.publishedAtDate : current.publishedAtDate;
+    const updatedTime = updates.publishedAtTime !== undefined ? updates.publishedAtTime : current.publishedAtTime;
+    const updatedTz = updates.timezone !== undefined ? updates.timezone : current.timezone;
+    const displayDateTime = updates.displayDateTime || formatArticleDisplayDate(updatedDate, updatedTime, updatedTz);
+
     memoryArticles[index] = {
-      ...memoryArticles[index],
+      ...current,
       ...updates,
+      publishedAtDate: updatedDate,
+      publishedAtTime: updatedTime,
+      timezone: updatedTz,
+      displayDateTime,
       updatedAt: new Date().toISOString()
     };
 

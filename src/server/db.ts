@@ -9,6 +9,7 @@ import {
 import { INITIAL_ARTICLES } from './seedData.js';
 import { generateSeedCommentsForArticle } from './seedComments.js';
 import { getFirestoreDb } from './firebase.js';
+import { formatArticleDisplayDate, normalizeArticleDates } from '../utils/dateUtils.js';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'news_db.json');
@@ -528,6 +529,11 @@ class NewsDatabase {
       ? this.generateUniqueSlug(articleData.slug, newId) 
       : this.generateUniqueSlug(articleData.title || 'untitled-news', newId);
 
+    const publishedAtDate = articleData.publishedAtDate || new Date().toISOString().split('T')[0];
+    const publishedAtTime = articleData.publishedAtTime || '10:00';
+    const timezone = articleData.timezone || 'EST';
+    const displayDateTime = articleData.displayDateTime || formatArticleDisplayDate(publishedAtDate, publishedAtTime, timezone);
+
     const newArticle: Article = {
       id: newId,
       slug: slug,
@@ -542,10 +548,10 @@ class NewsDatabase {
       placement: articleData.placement || 'normal',
       images: articleData.images || [],
       videos: articleData.videos || [],
-      publishedAtDate: articleData.publishedAtDate || new Date().toISOString().split('T')[0],
-      publishedAtTime: articleData.publishedAtTime || '10:00',
-      timezone: articleData.timezone || 'EST',
-      displayDateTime: articleData.displayDateTime || `${articleData.publishedAtDate} — ${articleData.publishedAtTime} ${articleData.timezone || 'EST'}`,
+      publishedAtDate,
+      publishedAtTime,
+      timezone,
+      displayDateTime,
       views: articleData.views || 0,
       likes: articleData.likes || 0,
       commentCount: 0,
@@ -625,22 +631,20 @@ class NewsDatabase {
       updates.canonicalUrl = `/ledger/${newSlugCandidate}`;
     }
 
+    const updatedDate = updates.publishedAtDate !== undefined ? updates.publishedAtDate : current.publishedAtDate;
+    const updatedTime = updates.publishedAtTime !== undefined ? updates.publishedAtTime : current.publishedAtTime;
+    const updatedTz = updates.timezone !== undefined ? updates.timezone : current.timezone;
+    const displayDateTime = updates.displayDateTime || formatArticleDisplayDate(updatedDate, updatedTime, updatedTz);
+
     const updated: Article = {
       ...current,
       ...updates,
+      publishedAtDate: updatedDate,
+      publishedAtTime: updatedTime,
+      timezone: updatedTz,
+      displayDateTime,
       updatedAt: new Date().toISOString()
     };
-
-    // If date/time/timezone updated, regenerate display label if needed
-    if (updates.publishedAtDate || updates.publishedAtTime || updates.timezone) {
-      const d = updates.publishedAtDate || current.publishedAtDate;
-      const t = updates.publishedAtTime || current.publishedAtTime;
-      const tz = updates.timezone || current.timezone;
-      const dateObj = new Date(`${d}T${t || '00:00'}`);
-      const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-      const timeFormatted = t ? new Date(`1970-01-01T${t}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
-      updated.displayDateTime = `${formattedDate} — ${timeFormatted} ${tz}`;
-    }
 
     // Save attached images to media library
     if (updated.images && updated.images.length > 0) {
