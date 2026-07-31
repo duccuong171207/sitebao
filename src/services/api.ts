@@ -74,16 +74,24 @@ export const api = {
   // --- ADMIN AUTH ---
 
   async login(username: string, password: string): Promise<AdminAuthResponse> {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    const data = await res.json();
-    if (data.success && data.token) {
-      this.setToken(data.token);
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (data.success && data.token) {
+        this.setToken(data.token);
+      }
+      return data;
+    } catch (err: any) {
+      console.error('API login error:', err);
+      return {
+        success: false,
+        message: err?.message || 'Server connection error during login'
+      };
     }
-    return data;
   },
 
   async verifyMe(): Promise<boolean> {
