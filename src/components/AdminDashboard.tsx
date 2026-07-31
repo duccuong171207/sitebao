@@ -172,10 +172,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         loadWatermarkSettings();
         loadMediaLibrary();
       } else {
-        setLoginError(res.message || (res as any).error || 'Invalid admin credentials');
+        setLoginError(res.message || 'Invalid admin credentials');
       }
-    } catch (err: any) {
-      setLoginError(err?.message || 'Server error during login');
+    } catch {
+      setLoginError('Server error during login');
     } finally {
       setIsLoggingIn(false);
     }
@@ -685,11 +685,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <Lock className="w-6 h-6" />
             </div>
             <h3 className="font-serif text-xl font-bold mb-2">Admin Authentication Required</h3>
-            <p className="text-xs text-slate-600 mb-2">
+            <p className="text-xs text-slate-600 mb-6">
               Enter credentials to access Luiis David news editorial controls and watermark settings.
-            </p>
-            <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200/80 rounded px-2.5 py-1.5 mb-6">
-              Default: Username <span className="font-bold">Luiis David</span> or <span className="font-bold">admin</span> | Password <span className="font-bold">duc10007</span>
             </p>
 
             {loginError && (

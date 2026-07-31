@@ -113,13 +113,12 @@ async function startServer() {
 
       const authRes = db.verifyAdminAuth(username, password);
       if (!authRes.success) {
-        return res.status(401).json({ success: false, message: authRes.message || 'Invalid credentials' });
+        return res.status(401).json(authRes);
       }
 
       res.json(authRes);
     } catch (err: any) {
-      console.error('Login route error:', err);
-      res.status(500).json({ success: false, message: err?.message || 'Server error during login' });
+      res.status(500).json({ success: false, error: err.message });
     }
   });
 
