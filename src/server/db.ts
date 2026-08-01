@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { collection, doc, getDocs, getDoc, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocs, getDoc, setDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { 
   Article, Comment, ArticleImage, AdminAuthResponse, 
   WatermarkSettings, SlugRedirect 
@@ -218,32 +218,126 @@ class NewsDatabase {
     }
   }
 
-  private save() {
+  private processBase64Images() {
+    const saveBase64ToDisk = (base64Str: string, indexHint: number): string => {
+      if (!base64Str || !base64Str.startsWith('data:')) {
+        return base64Str;
+      }
+      try {
+        const matches = base64Str.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+          const buffer = Buffer.from(base64Data, 'base64');
+
+          const uploadsDir = path.join(process.cwd(), 'data', 'uploads', 'public');
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+
+          let ext = 'jpg';
+          if (mimeType === 'image/png') ext = 'png';
+          else if (mimeType === 'image/gif') ext = 'gif';
+          else if (mimeType === 'image/webp') ext = 'webp';
+
+          const filename = `auto-${Date.now()}-${indexHint}-${Math.random().toString(36).substring(2, 6)}.${ext}`;
+          const diskPath = path.join(uploadsDir, filename);
+          fs.writeFileSync(diskPath, buffer);
+
+          return `/uploads/public/${filename}`;
+        }
+      } catch (err) {
+        console.error('Error auto-saving base64 image inside DB:', err);
+      }
+      return base64Str;
+    };
+
+    let cleanedAny = false;
+    // Clean articles
+    if (this.data.articles && Array.isArray(this.data.articles)) {
+      this.data.articles.forEach((art, artIdx) => {
+        if (art.images && Array.isArray(art.images)) {
+          art.images.forEach((img, imgIdx) => {
+            if (img.url && img.url.startsWith('data:')) {
+              img.url = saveBase64ToDisk(img.url, artIdx * 100 + imgIdx);
+              cleanedAny = true;
+            }
+            if (img.thumbnailUrl && img.thumbnailUrl.startsWith('data:')) {
+              img.thumbnailUrl = saveBase64ToDisk(img.thumbnailUrl, artIdx * 100 + imgIdx + 50);
+              cleanedAny = true;
+            }
+          });
+        }
+      });
+    }
+
+    // Clean media library
+    if (this.data.mediaLibrary && Array.isArray(this.data.mediaLibrary)) {
+      this.data.mediaLibrary.forEach((img, imgIdx) => {
+        if (img.url && img.url.startsWith('data:')) {
+          img.url = saveBase64ToDisk(img.url, 10000 + imgIdx);
+          cleanedAny = true;
+        }
+        if (img.thumbnailUrl && img.thumbnailUrl.startsWith('data:')) {
+          img.thumbnailUrl = saveBase64ToDisk(img.thumbnailUrl, 20000 + imgIdx);
+          cleanedAny = true;
+        }
+      });
+    }
+
+    return cleanedAny;
+  }
+
+  private save(modifiedArticle?: Article, deletedArticleId?: string) {
+    // 1. Automatically convert any inline base64 images inside DB to physical disk files
+    this.processBase64Images();
+
+    // 2. Save state locally in news_db.json
     try {
       fs.writeFileSync(DB_FILE, JSON.stringify(this.data, null, 2), 'utf-8');
     } catch (err) {
       console.error('Error saving news database to file:', err);
     }
 
-    // Asynchronously synchronize with Cloud Firestore
+    // 3. Asynchronously synchronize with Cloud Firestore in background
     try {
       const firestore = getFirestoreDb();
       if (firestore) {
+        // A. Sync general system settings doc
         const sysDocRef = doc(firestore, 'system', 'publication_data');
         setDoc(sysDocRef, {
           watermarkSettings: this.data.watermarkSettings,
           mediaLibrary: this.data.mediaLibrary,
           redirects: this.data.redirects,
           updatedAt: new Date().toISOString()
-        }, { merge: true }).catch(e => console.warn('Firestore sync warning:', e?.message || e));
+        }, { merge: true }).catch(e => console.warn('Firestore system doc sync warning:', e?.message || e));
 
-        // Sync individual articles to Firestore collection
-        const batch = writeBatch(firestore);
-        this.data.articles.forEach((art) => {
-          const docRef = doc(firestore, 'articles', art.id);
-          batch.set(docRef, art, { merge: true });
-        });
-        batch.commit().catch(e => console.warn('Firestore batch commit warning:', e?.message || e));
+        // B. Sync article data granularly or chunked fallback
+        if (deletedArticleId) {
+          const docRef = doc(firestore, 'articles', deletedArticleId);
+          deleteDoc(docRef).catch(e => console.warn(`Firestore delete article (${deletedArticleId}) warning:`, e?.message || e));
+        } else if (modifiedArticle) {
+          // Sync specific modified article only
+          const docRef = doc(firestore, 'articles', modifiedArticle.id);
+          const upToDateArt = this.data.articles.find(a => a.id === modifiedArticle.id) || modifiedArticle;
+          setDoc(docRef, upToDateArt, { merge: true }).catch(e => console.warn(`Firestore save article (${modifiedArticle.id}) warning:`, e?.message || e));
+        } else {
+          // Chunked fallback syncing all articles to prevent network/size timeouts
+          const syncAllArticles = async () => {
+            const articles = [...this.data.articles];
+            const chunkSize = 25;
+            for (let i = 0; i < articles.length; i += chunkSize) {
+              const chunk = articles.slice(i, i + chunkSize);
+              const batch = writeBatch(firestore);
+              chunk.forEach((art) => {
+                const docRef = doc(firestore, 'articles', art.id);
+                batch.set(docRef, art, { merge: true });
+              });
+              await batch.commit();
+            }
+          };
+          syncAllArticles().catch(e => console.warn('Firestore fallback sync all articles warning:', e?.message || e));
+        }
       }
     } catch (err) {
       console.warn('Error initiating Firestore sync:', err);
@@ -390,7 +484,7 @@ class NewsDatabase {
       if (now - lastView > 5 * 60 * 1000) {
         article.views = (article.views || 0) + 1;
         this.data.viewsLog[viewKey] = now;
-        this.save();
+        this.save(article);
       }
     }
 
@@ -410,7 +504,7 @@ class NewsDatabase {
 
     article.likes = (article.likes || 0) + 1;
     this.data.likesLog[likeKey] = true;
-    this.save();
+    this.save(article);
     return { likes: article.likes };
   }
 
@@ -435,7 +529,7 @@ class NewsDatabase {
 
     article.comments.unshift(newComment);
     article.commentCount = article.comments.length;
-    this.save();
+    this.save(article);
     return newComment;
   }
 
@@ -447,7 +541,7 @@ class NewsDatabase {
     if (!comment) return null;
 
     comment.likes = (comment.likes || 0) + 1;
-    this.save();
+    this.save(article);
     return { likes: comment.likes };
   }
 
@@ -578,7 +672,7 @@ class NewsDatabase {
     }
 
     this.data.articles.unshift(newArticle);
-    this.save();
+    this.save(newArticle);
     return newArticle;
   }
 
@@ -589,7 +683,7 @@ class NewsDatabase {
     const newComments = generateSeedCommentsForArticle(articleId, count, article.publishedAtDate, article.publishedAtTime);
     article.comments = newComments;
     article.commentCount = newComments.length;
-    this.save();
+    this.save(article);
     return newComments;
   }
 
@@ -599,7 +693,7 @@ class NewsDatabase {
 
     article.comments = [];
     article.commentCount = 0;
-    this.save();
+    this.save(article);
     return true;
   }
 
@@ -652,7 +746,7 @@ class NewsDatabase {
     }
 
     this.data.articles[index] = updated;
-    this.save();
+    this.save(updated);
     return updated;
   }
 
@@ -660,7 +754,7 @@ class NewsDatabase {
     const initialLen = this.data.articles.length;
     this.data.articles = this.data.articles.filter((a) => a.id !== id);
     if (this.data.articles.length < initialLen) {
-      this.save();
+      this.save(undefined, id);
       return true;
     }
     return false;
@@ -674,7 +768,7 @@ class NewsDatabase {
     article.comments = article.comments.filter((c) => c.id !== commentId);
     if (article.comments.length < len) {
       article.commentCount = article.comments.length;
-      this.save();
+      this.save(article);
       return true;
     }
     return false;
@@ -700,7 +794,7 @@ class NewsDatabase {
 
     article.comments.push(seedComment);
     article.commentCount = article.comments.length;
-    this.save();
+    this.save(article);
     return seedComment;
   }
 
