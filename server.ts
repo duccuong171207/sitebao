@@ -61,6 +61,24 @@ async function startServer() {
     }
   });
 
+  // Get single story by slug (optimized for fast direct route)
+  app.get('/api/stories/:slug', (req: Request, res: Response) => {
+    try {
+      const { slug } = req.params;
+      const incrementView = req.query.view !== 'false';
+      const visitorId = req.ip || req.headers['x-forwarded-for'] as string || 'visitor-anon';
+      const article = db.getArticleByIdOrSlug(slug, incrementView, visitorId);
+      
+      if (!article) {
+        return res.status(404).json({ success: false, error: 'Story not found' });
+      }
+
+      res.json({ success: true, article });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // Like an article
   app.post('/api/articles/:id/like', (req: Request, res: Response) => {
     try {

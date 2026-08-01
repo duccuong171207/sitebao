@@ -29,8 +29,20 @@ export default function App() {
 
   // Initial load and category filtering
   useEffect(() => {
-    loadArticles();
-    checkAdminAuth();
+    const path = window.location.pathname;
+    const match = path.match(/^\/(?:ledger|story|news)\/([^/]+)/);
+    if (match) {
+      // Direct story URL: load ONLY the story, do not load full articles list first!
+      fetchStoryWithTimeout(match[1]);
+      checkAdminAuth();
+      // Load background articles list silently
+      api.getArticles({ category: selectedCategory === 'All' ? undefined : selectedCategory })
+        .then(data => setArticles(data))
+        .catch(() => {});
+    } else {
+      loadArticles();
+      checkAdminAuth();
+    }
   }, [selectedCategory]);
 
   // Sync URL and document title when selectedArticle changes
@@ -52,24 +64,48 @@ export default function App() {
   }, [selectedArticle, is404]);
 
   // Handle URL deep-linking on initial load or browser back/forward buttons
+  const [loadError, setLoadError] = useState(false);
+  const [loadingSlug, setLoadingSlug] = useState<string | null>(null);
+
+  const fetchStoryWithTimeout = async (slugOrId: string) => {
+    setLoadingSlug(slugOrId);
+    setLoadError(false);
+    setIsLoading(true);
+    try {
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Story loading timeout')), 10000)
+      );
+      const fetchPromise = api.getStoryBySlug(slugOrId, false);
+      const article = await Promise.race([fetchPromise, timeoutPromise]) as Article;
+      
+      if (article) {
+        setSelectedArticle(article);
+        setIs404(false);
+        setLoadError(false);
+      } else {
+        setIs404(true);
+      }
+    } catch (err) {
+      console.error('Failed to load article from URL:', err);
+      setLoadError(true);
+      setIs404(false);
+    } finally {
+      setIsLoading(false);
+      setLoadingSlug(null);
+    }
+  };
+
   useEffect(() => {
     const handlePopState = async () => {
       const path = window.location.pathname;
       const match = path.match(/^\/(?:ledger|story|news)\/([^/]+)/);
       if (match) {
         const slugOrId = match[1];
-        try {
-          const article = await api.getArticle(slugOrId, false);
-          setSelectedArticle(article);
-          setIs404(false);
-        } catch (err) {
-          console.error('Failed to load article from URL:', err);
-          setSelectedArticle(null);
-          setIs404(true);
-        }
+        await fetchStoryWithTimeout(slugOrId);
       } else if (path === '/') {
         setSelectedArticle(null);
         setIs404(false);
+        setLoadError(false);
       }
     };
 
@@ -163,7 +199,40 @@ export default function App() {
 
       {/* Main Main Content Stage */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8">
-        {is404 ? (
+        {loadError ? (
+          <div className="py-24 text-center space-y-6 border border-red-200 rounded-xs shadow-sm bg-white max-w-xl mx-auto p-8">
+            <div className="w-12 h-12 bg-red-50 text-red-700 rounded-full flex items-center justify-center mx-auto font-bold text-lg">
+              !
+            </div>
+            <h2 className="font-serif-headline text-2xl font-bold text-gray-900">
+              Story Could Not Be Loaded
+            </h2>
+            <p className="text-gray-600 text-sm font-sans">
+              Unable to load this Story. The network request timed out or failed. Please check your connection and try again.
+            </p>
+            <div className="flex items-center justify-center gap-3 pt-4">
+              <button
+                onClick={() => {
+                  const match = window.location.pathname.match(/^\/(?:ledger|story|news)\/([^/]+)/);
+                  if (match) fetchStoryWithTimeout(match[1]);
+                }}
+                className="bg-[#990000] text-white px-6 py-2.5 font-bold uppercase tracking-wider text-xs hover:bg-black transition-colors rounded-xs cursor-pointer"
+              >
+                Retry Loading
+              </button>
+              <button
+                onClick={() => {
+                  setLoadError(false);
+                  setSelectedArticle(null);
+                  window.history.pushState(null, '', '/');
+                }}
+                className="bg-gray-200 text-gray-800 px-6 py-2.5 font-bold uppercase tracking-wider text-xs hover:bg-gray-300 transition-colors rounded-xs cursor-pointer"
+              >
+                Return to Index
+              </button>
+            </div>
+          </div>
+        ) : is404 ? (
           <div className="py-32 text-center space-y-6 border border-black/10 rounded-xs shadow-2xs bg-white">
             <h1 className="text-4xl sm:text-5xl font-serif-masthead font-black tracking-tight text-[#111111] uppercase">
               404 &mdash; Story Not Found
@@ -194,11 +263,28 @@ export default function App() {
             onSelectArticle={handleSelectArticle}
           />
         ) : isLoading ? (
-          <div className="py-20 text-center space-y-4">
-            <div className="w-8 h-8 border-3 border-[#111111] border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p className="font-serif-headline text-lg font-bold text-gray-700">
-              Loading Luiis David Editorial Network...
-            </p>
+          <div className="max-w-4xl mx-auto py-12 px-4 animate-pulse space-y-6">
+            <div className="flex items-center justify-between border-b-2 border-black pb-4">
+              <div className="w-24 h-4 bg-gray-300 rounded"></div>
+              <div className="w-32 h-4 bg-gray-200 rounded"></div>
+            </div>
+            <div className="space-y-3 pt-4">
+              <div className="w-full h-10 bg-gray-300 rounded"></div>
+              <div className="w-3/4 h-8 bg-gray-200 rounded"></div>
+            </div>
+            <div className="flex items-center gap-4 py-3 border-y border-gray-200">
+              <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
+              <div className="space-y-2">
+                <div className="w-36 h-3 bg-gray-300 rounded"></div>
+                <div className="w-24 h-3 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+            <div className="w-full h-96 bg-gray-200 rounded"></div>
+            <div className="space-y-3 pt-4">
+              <div className="w-full h-4 bg-gray-200 rounded"></div>
+              <div className="w-full h-4 bg-gray-200 rounded"></div>
+              <div className="w-5/6 h-4 bg-gray-200 rounded"></div>
+            </div>
           </div>
         ) : (
           <ArticleGrid

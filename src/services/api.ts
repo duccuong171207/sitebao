@@ -56,6 +56,15 @@ export const api = {
     return clientDb.getArticle(idOrSlug, incrementView);
   },
 
+  // Get single story by slug (optimized direct route)
+  async getStoryBySlug(slug: string, incrementView = true): Promise<Article> {
+    const data = await safeFetch<any>(`${API_BASE}/stories/${slug}?view=${incrementView}`);
+    if (data && data.success && data.article) {
+      return data.article;
+    }
+    return this.getArticle(slug, incrementView);
+  },
+
   // Like article
   async likeArticle(id: string): Promise<number> {
     const data = await safeFetch<any>(`${API_BASE}/articles/${id}/like`, { method: 'POST' });
