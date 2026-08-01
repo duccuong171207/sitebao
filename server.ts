@@ -22,9 +22,6 @@ async function startServer() {
   app.use(express.json({ limit: '500mb' }));
   app.use(express.urlencoded({ limit: '500mb', extended: true }));
 
-  // Serve static files from data/uploads folder
-  app.use('/uploads', express.static(path.join(process.cwd(), 'data/uploads')));
-
   // --- PUBLIC VISITOR API ROUTES ---
 
   // Get articles
@@ -395,40 +392,6 @@ async function startServer() {
       }
 
       const imgId = 'img-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
-      let fileUrl = imageData;
-      let thumbnailUrl = imageData;
-
-      // Check if imageData is base64 and save it to disk
-      if (imageData.startsWith('data:')) {
-        const matches = imageData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-        if (matches && matches.length === 3) {
-          const mimeType = matches[1];
-          const base64Data = matches[2];
-          const buffer = Buffer.from(base64Data, 'base64');
-
-          const uploadsDir = path.join(process.cwd(), 'data', 'uploads', 'public');
-          const thumbsDir = path.join(process.cwd(), 'data', 'uploads', 'public', 'thumbs');
-          
-          if (!fs.existsSync(uploadsDir)) {
-            fs.mkdirSync(uploadsDir, { recursive: true });
-          }
-          if (!fs.existsSync(thumbsDir)) {
-            fs.mkdirSync(thumbsDir, { recursive: true });
-          }
-
-          let ext = 'jpg';
-          if (mimeType === 'image/png') ext = 'png';
-          else if (mimeType === 'image/gif') ext = 'gif';
-          else if (mimeType === 'image/webp') ext = 'webp';
-
-          const filename = `${imgId}.${ext}`;
-          const diskPath = path.join(uploadsDir, filename);
-          fs.writeFileSync(diskPath, buffer);
-
-          fileUrl = `/uploads/public/${filename}`;
-          thumbnailUrl = `/uploads/public/${filename}`;
-        }
-      }
 
       // Save processed image metadata object
       const imageObj = {
@@ -436,11 +399,11 @@ async function startServer() {
         originalFilename: originalFilename || `photo_${Date.now()}.jpg`,
         publicFilename: `watermarked_${imgId}.jpg`,
         filePath: `data/uploads/private/${imgId}.jpg`,
-        publicFilePath: fileUrl,
-        watermarkedFilePath: fileUrl,
-        thumbnailPath: thumbnailUrl,
-        url: fileUrl, // short static URL
-        thumbnailUrl: thumbnailUrl,
+        publicFilePath: `/uploads/public/${imgId}.jpg`,
+        watermarkedFilePath: `/uploads/public/${imgId}.jpg`,
+        thumbnailPath: `/uploads/public/thumbs/${imgId}.jpg`,
+        url: imageData, // watermarked base64 / URL
+        thumbnailUrl: imageData,
         originalUploadTimestamp: new Date().toISOString(),
         originalPublicationDate: new Date().toISOString().split('T')[0],
         creator: 'Luiis David Bureau',

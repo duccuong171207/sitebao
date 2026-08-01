@@ -389,8 +389,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               file.name
             );
 
-            if (thumbnailUrl && (!imgObj.thumbnailUrl || imgObj.thumbnailUrl.startsWith('data:'))) {
-              imgObj.thumbnailUrl = imgObj.url || thumbnailUrl;
+            if (thumbnailUrl) {
+              imgObj.thumbnailUrl = thumbnailUrl;
             }
 
             newUploadedImages.push(imgObj);
@@ -433,20 +433,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     try {
       const { watermarkedUrl } = await processImageWatermark(newImgUrl.trim(), watermarkSettings);
       
-      const uploadedImg = await api.uploadImage(
-        watermarkedUrl,
-        newImgCaption.trim() || 'News photography',
-        newImgCredit.trim() || 'Luiis David Photography',
-        newImgCopyright.trim() || '© Luiis David — All Rights Reserved',
-        newImgCaption.trim() || formTitle,
-        watermarkSettings.text,
-        watermarkSettings.position,
-        watermarkSettings.opacity,
-        'url_image.jpg'
-      );
-
       const newImg: ArticleImage = {
-        ...uploadedImg,
+        id: 'img-' + Date.now(),
+        url: watermarkedUrl,
+        caption: newImgCaption.trim() || 'News photography',
+        description: '',
+        credit: newImgCredit.trim() || 'Luiis David Photography',
+        creator: 'Luiis David Bureau',
+        copyrightOwner: 'Luiis David',
+        copyrightNotice: newImgCopyright.trim() || '© Luiis David — All Rights Reserved',
+        watermarkEnabled: true,
+        watermarkText: watermarkSettings.text,
+        watermarkPosition: watermarkSettings.position,
+        watermarkOpacity: watermarkSettings.opacity,
+        altText: newImgCaption.trim() || formTitle,
         isFeatured: images.length === 0,
         order: images.length + 1
       };
