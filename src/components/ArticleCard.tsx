@@ -49,6 +49,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
               alt={featuredImg.altText || article.title}
               className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500"
               loading="lazy"
+              referrerPolicy="no-referrer"
             />
             {article.videos && article.videos.length > 0 && (
               <span className="absolute top-2 left-2 bg-[#990000] text-white text-[10px] font-bold uppercase px-2 py-0.5 flex items-center gap-1 shadow-sm font-sans-ui z-10">
@@ -139,6 +140,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
               alt={featuredImg.altText || article.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
+              referrerPolicy="no-referrer"
             />
           </div>
         )}
@@ -236,6 +238,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
               alt={featuredImg.altText || article.title}
               className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
               loading="lazy"
+              referrerPolicy="no-referrer"
             />
             {article.videos && article.videos.length > 0 && (
               <span className="absolute top-2 left-2 bg-[#990000] text-white text-[9px] font-bold uppercase px-1.5 py-0.5 flex items-center gap-1 shadow-sm font-sans-ui z-10">

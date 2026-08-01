@@ -431,22 +431,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     setIsProcessingWatermark(true);
     try {
-      const { watermarkedUrl } = await processImageWatermark(newImgUrl.trim(), watermarkSettings);
+      const { watermarkedUrl, thumbnailUrl } = await processImageWatermark(newImgUrl.trim(), watermarkSettings);
       
+      const imgObj = await api.uploadImage(
+        watermarkedUrl,
+        newImgCaption.trim() || 'News photography',
+        newImgCredit.trim() || 'Luiis David Photography',
+        newImgCopyright.trim() || '© Luiis David — All Rights Reserved',
+        newImgCaption.trim() || formTitle,
+        watermarkSettings.text || '© Luiis David',
+        watermarkSettings.position,
+        watermarkSettings.opacity,
+        'url_image.jpg'
+      );
+
+      if (thumbnailUrl && !imgObj.thumbnailUrl) {
+        imgObj.thumbnailUrl = thumbnailUrl;
+      }
+
       const newImg: ArticleImage = {
-        id: 'img-' + Date.now(),
-        url: watermarkedUrl,
-        caption: newImgCaption.trim() || 'News photography',
-        description: '',
-        credit: newImgCredit.trim() || 'Luiis David Photography',
-        creator: 'Luiis David Bureau',
-        copyrightOwner: 'Luiis David',
-        copyrightNotice: newImgCopyright.trim() || '© Luiis David — All Rights Reserved',
-        watermarkEnabled: true,
-        watermarkText: watermarkSettings.text,
-        watermarkPosition: watermarkSettings.position,
-        watermarkOpacity: watermarkSettings.opacity,
-        altText: newImgCaption.trim() || formTitle,
+        ...imgObj,
         isFeatured: images.length === 0,
         order: images.length + 1
       };
@@ -455,6 +459,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setNewImgUrl('');
       setNewImgCaption('');
     } catch (err) {
+      console.warn('Could not upload or watermark image URL, fallback directly:', err);
       alert('Could not apply watermark to image URL. Image added directly.');
       const fallbackImg: ArticleImage = {
         id: 'img-' + Date.now(),
@@ -1529,6 +1534,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   src={img.url}
                                   alt={img.altText || formTitle}
                                   className="w-full h-full object-cover"
+                                  referrerPolicy="no-referrer"
                                 />
                                 {img.isFeatured && (
                                   <span className="absolute top-2 left-2 bg-amber-700 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded shadow">
@@ -1696,7 +1702,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               >
                                 <div className="h-32 bg-black relative flex items-center justify-center">
                                   {vid.posterUrl ? (
-                                    <img src={vid.posterUrl} alt={vid.videoTitle} className="w-full h-full object-cover opacity-80" />
+                                    <img src={vid.posterUrl} alt={vid.videoTitle} className="w-full h-full object-cover opacity-80" referrerPolicy="no-referrer" />
                                   ) : (
                                     <div className="text-white text-xs font-mono opacity-70 truncate px-2">{vid.videoUrl}</div>
                                   )}
@@ -1896,6 +1902,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               src={renderedWatermarkPreview}
                               alt="Watermark Preview"
                               className="w-full h-auto max-h-[320px] object-contain"
+                              referrerPolicy="no-referrer"
                             />
                           ) : (
                             <div className="text-xs text-slate-400 flex items-center gap-2">
@@ -1987,7 +1994,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       {mediaLibrary.map((media) => (
                         <div key={media.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm flex flex-col">
                           <div className="h-40 bg-slate-100 relative overflow-hidden">
-                            <img src={media.url} alt={media.altText} className="w-full h-full object-cover" />
+                            <img src={media.url} alt={media.altText} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                             <span className="absolute bottom-2 right-2 bg-slate-900/80 text-white text-[10px] px-2 py-0.5 rounded font-mono">
                               {media.watermarkText || '© Luiis David'}
                             </span>

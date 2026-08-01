@@ -34,6 +34,41 @@ async function startServer() {
     next();
   });
 
+  // Proxy endpoint to load external images and bypass CORS for watermarking canvas
+  app.get('/api/proxy-image', async (req: Request, res: Response) => {
+    try {
+      const imageUrl = req.query.url as string;
+      if (!imageUrl) {
+        return res.status(400).send('URL parameter is required');
+      }
+
+      // Ensure the URL is valid HTTP/HTTPS
+      if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+        return res.status(400).send('Invalid image URL protocol');
+      }
+
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        return res.status(response.status).send(`Failed to fetch remote image: ${response.statusText}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (contentType) {
+        res.setHeader('Content-Type', contentType);
+      }
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET');
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      res.send(buffer);
+    } catch (err: any) {
+      console.error('Error in proxy-image endpoint:', err);
+      res.status(500).send(err.message);
+    }
+  });
+
   // --- PUBLIC VISITOR API ROUTES ---
 
   // Get articles

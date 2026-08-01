@@ -100,6 +100,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
             src={currentImage.url}
             alt={currentImage.altText || currentImage.caption || 'Article photo'}
             className="max-h-[70vh] max-w-full object-contain rounded-xs shadow-2xl transition-all"
+            referrerPolicy="no-referrer"
           />
 
           {/* Copyright overlay badge */}
@@ -155,7 +156,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
                       : 'border-transparent opacity-50 hover:opacity-100'
                   }`}
                 >
-                  <img src={img.url} alt="thumbnail" className="w-full h-full object-cover" />
+                  <img src={img.url} alt="thumbnail" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </button>
               ))}
             </div>
