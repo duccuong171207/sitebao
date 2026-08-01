@@ -441,7 +441,7 @@ async function startServer() {
       appType: 'spa'
     });
     
-    app.get('/ledger/:slug', async (req, res, next) => {
+    app.get(['/ledger/:slug', '/story/:slug', '/news/:slug'], async (req, res, next) => {
       try {
         const { slug } = req.params;
         const article = db.getArticleByIdOrSlug(slug, false, 'ssr-bot');
@@ -484,7 +484,7 @@ async function startServer() {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath, { index: false })); // don't serve index.html automatically for directories
     
-    app.get('/ledger/:slug', (req, res) => {
+    app.get(['/ledger/:slug', '/story/:slug', '/news/:slug'], (req, res) => {
       try {
         const { slug } = req.params;
         const article = db.getArticleByIdOrSlug(slug, false, 'ssr-bot');
