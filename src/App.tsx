@@ -12,12 +12,13 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { Footer } from './components/Footer';
 
 export default function App() {
+  const initialStory = typeof window !== 'undefined' ? (window as any).__INITIAL_STORY__ || null : null;
   const [articles, setArticles] = useState<Article[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(!initialStory && window.location.pathname.startsWith('/ledger/'));
   
   // Navigation & View State
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(initialStory);
   const [is404, setIs404] = useState(false);
 
   // Modals State
@@ -32,14 +33,19 @@ export default function App() {
     const path = window.location.pathname;
     const match = path.match(/^\/(?:ledger|story|news)\/([^/]+)/);
     if (match) {
-      // Direct story URL: load ONLY the story, do not load full articles list first!
-      fetchStoryWithTimeout(match[1]);
+      if (!selectedArticle) {
+        // Direct story URL: load ONLY the story if not pre-injected
+        fetchStoryWithTimeout(match[1]);
+      } else {
+        setIsLoading(false);
+      }
       checkAdminAuth();
       // Load background articles list silently
       api.getArticles({ category: selectedCategory === 'All' ? undefined : selectedCategory })
         .then(data => setArticles(data))
         .catch(() => {});
     } else {
+      setIsLoading(false);
       loadArticles();
       checkAdminAuth();
     }

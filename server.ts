@@ -468,6 +468,7 @@ async function startServer() {
             <meta property="og:url" content="https://${req.get('host')}/ledger/${article.slug || article.id}" />
             <meta property="og:type" content="article" />
             <meta name="author" content="Luiis David ✓" />
+            <script>window.__INITIAL_STORY__ = ${JSON.stringify(article)};</script>
           `;
           html = html.replace('</head>', `${ogTags}</head>`);
         }
@@ -509,6 +510,7 @@ async function startServer() {
             <meta property="og:url" content="https://${req.get('host')}/ledger/${article.slug || article.id}" />
             <meta property="og:type" content="article" />
             <meta name="author" content="Luiis David ✓" />
+            <script>window.__INITIAL_STORY__ = ${JSON.stringify(article)};</script>
           `;
           html = html.replace('</head>', `${ogTags}</head>`);
         }
