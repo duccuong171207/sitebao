@@ -16,6 +16,10 @@ export default function App() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(!initialStory && window.location.pathname.startsWith('/ledger/'));
   
+  // Quota Warning States
+  const [isFirestoreQuotaExceeded, setIsFirestoreQuotaExceeded] = useState(false);
+  const [isQuotaNoticeDismissed, setIsQuotaNoticeDismissed] = useState(false);
+
   // Navigation & View State
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(initialStory);
@@ -27,6 +31,18 @@ export default function App() {
   const [legalOpen, setLegalOpen] = useState(false);
   const [legalDocType, setLegalDocType] = useState<LegalDocType>('copyright');
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+
+  // Monitor Firestore Quota Limit Status
+  useEffect(() => {
+    const checkQuota = () => {
+      if (api.isFirestoreQuotaExceeded()) {
+        setIsFirestoreQuotaExceeded(true);
+      }
+    };
+    checkQuota();
+    const interval = setInterval(checkQuota, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Initial load and category filtering
   useEffect(() => {
@@ -176,6 +192,37 @@ export default function App() {
       
       {/* Live Financial Markets Bar */}
       <MarketTicker />
+
+      {/* Firestore Quota Exceeded Graceful Fallback Alert Banner */}
+      {isFirestoreQuotaExceeded && !isQuotaNoticeDismissed && (
+        <div className="bg-amber-50 border-b border-amber-200 text-amber-950 px-4 py-3 text-xs sm:text-sm font-sans flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs animate-fade-in">
+          <div className="flex items-center gap-2">
+            <span className="text-amber-700 font-bold shrink-0 flex items-center gap-1">
+              ⚠️ Database Notice:
+            </span>
+            <span className="text-amber-900 leading-relaxed">
+              The Enterprise Cloud Firestore database is currently at maximum daily read capacity under the free tier plan. The application has gracefully fell back to high-fidelity, client-side offline storage cache to keep news articles, comments, and interactions fully functional without any interruption.
+            </span>
+          </div>
+          <div className="flex items-center gap-4 shrink-0 font-medium">
+            <a
+              href="https://console.firebase.google.com/project/responsive-outlet-l4wsx/firestore/databases/ai-studio-remixluiisdavidp-f1ea7bac-8b12-4c1c-9770-2432a31b4108/data?openUpgradeDialog=true"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-amber-800 hover:text-amber-950 underline transition-colors decoration-amber-600 font-bold text-xs"
+            >
+              Manage Firestore Database &rarr;
+            </a>
+            <button
+              onClick={() => setIsQuotaNoticeDismissed(true)}
+              className="text-amber-600 hover:text-amber-950 transition-colors p-1"
+              aria-label="Dismiss banner"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Newspaper Masthead Header */}
       <Header

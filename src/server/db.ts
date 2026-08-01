@@ -102,6 +102,7 @@ class NewsDatabase {
     viewsLog: {},
     likesLog: {}
   };
+  private firestoreQuotaExceeded = false;
 
   constructor() {
     this.init();
@@ -213,8 +214,12 @@ class NewsDatabase {
         if (sysData?.mediaLibrary) this.data.mediaLibrary = sysData.mediaLibrary;
         if (sysData?.redirects) this.data.redirects = sysData.redirects;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Firestore load skipped or unavailable:', err);
+      const msg = err?.message || String(err);
+      if (msg.includes('Quota') || msg.includes('quota') || err?.code === 'resource-exhausted') {
+        this.firestoreQuotaExceeded = true;
+      }
     }
   }
 
@@ -245,9 +250,17 @@ class NewsDatabase {
         });
         batch.commit().catch(e => console.warn('Firestore batch commit warning:', e?.message || e));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Error initiating Firestore sync:', err);
+      const msg = err?.message || String(err);
+      if (msg.includes('Quota') || msg.includes('quota') || err?.code === 'resource-exhausted') {
+        this.firestoreQuotaExceeded = true;
+      }
     }
+  }
+
+  public isFirestoreQuotaExceeded(): boolean {
+    return this.firestoreQuotaExceeded;
   }
 
   // --- WATERMARK SETTINGS ---

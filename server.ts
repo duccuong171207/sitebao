@@ -22,6 +22,18 @@ async function startServer() {
   app.use(express.json({ limit: '500mb' }));
   app.use(express.urlencoded({ limit: '500mb', extended: true }));
 
+  // Intercept all JSON responses to include Firestore quota status dynamically
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const originalJson = res.json;
+    res.json = function (body: any) {
+      if (body && typeof body === 'object') {
+        body.firestoreQuotaExceeded = db.isFirestoreQuotaExceeded();
+      }
+      return originalJson.call(this, body);
+    };
+    next();
+  });
+
   // --- PUBLIC VISITOR API ROUTES ---
 
   // Get articles

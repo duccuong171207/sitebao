@@ -3,6 +3,14 @@ import { clientDb } from './clientDb';
 
 const API_BASE = '/api';
 
+let serverQuotaExceeded = false;
+
+function checkQuotaInResponse(data: any) {
+  if (data && data.firestoreQuotaExceeded === true) {
+    serverQuotaExceeded = true;
+  }
+}
+
 async function safeFetch<T>(url: string, options?: RequestInit): Promise<T | null> {
   try {
     const res = await fetch(url, options);
@@ -10,6 +18,7 @@ async function safeFetch<T>(url: string, options?: RequestInit): Promise<T | nul
     const contentType = res.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) return null;
     const data = await res.json();
+    checkQuotaInResponse(data);
     return data;
   } catch (err) {
     return null;
@@ -456,5 +465,9 @@ export const api = {
     return clientDb.uploadImage(
       imageData, caption, credit, copyright, altText, watermarkText, watermarkPosition, watermarkOpacity
     );
+  },
+
+  isFirestoreQuotaExceeded(): boolean {
+    return serverQuotaExceeded || clientDb.isQuotaExceeded();
   }
 };

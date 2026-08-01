@@ -35,6 +35,25 @@ const DEFAULT_WATERMARK: WatermarkSettings = {
 
 // Initialize client-side Firebase Firestore
 let firestoreDb: ReturnType<typeof getFirestore> | null = null;
+let quotaExceeded = false;
+
+export const isQuotaError = (err: any): boolean => {
+  if (!err) return false;
+  const msg = err.message || String(err);
+  const code = err.code || '';
+  return (
+    msg.toLowerCase().includes('quota') ||
+    msg.toLowerCase().includes('exhausted') ||
+    code === 'resource-exhausted'
+  );
+};
+
+export function handleClientDbError(err: any, contextMsg: string) {
+  console.warn(`[clientDb] ${contextMsg}:`, err);
+  if (isQuotaError(err)) {
+    quotaExceeded = true;
+  }
+}
 
 try {
   const config = firebaseConfig as any;
@@ -45,7 +64,7 @@ try {
       : getFirestore(app);
   }
 } catch (e) {
-  console.warn('Client Firebase SDK initialization failed, falling back to local storage:', e);
+  handleClientDbError(e, 'Client Firebase SDK initialization failed');
 }
 
 // In-memory & localStorage fallback cache
@@ -158,7 +177,7 @@ export const clientDb = {
           batch.commit().catch(() => {});
         }
       } catch (err) {
-        console.warn('Firestore articles fetch warning, using local cache:', err);
+        handleClientDbError(err, 'articles fetch failed');
       }
     }
 
@@ -639,5 +658,9 @@ export const clientDb = {
     localStorage.setItem(CACHE_KEY_MEDIA, JSON.stringify(media));
 
     return newImage;
+  },
+
+  isQuotaExceeded(): boolean {
+    return quotaExceeded;
   }
 };
